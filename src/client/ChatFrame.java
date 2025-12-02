@@ -21,6 +21,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.time.LocalDateTime;
+import java.util.Random;
 
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -54,7 +55,7 @@ public class ChatFrame extends JFrame {
 	public boolean isStop = false, isSendFile = false, isReceiveFile = false;
 	private ChatRoom chat;
 	private int portServer = 0;
-
+	int voicePort = 60000 + new Random().nextInt(2000);
 	// Frame
 	private static final long serialVersionUID = 1L;
 	private JPanel contentPane;
@@ -66,7 +67,6 @@ public class ChatFrame extends JFrame {
 	private JProgressBar progressBar;
 	JButton btnSend;
 	private ControllerChatFrame frameChat = new ControllerChatFrame();
-	int voicePort = 5500;
 
 	public ChatFrame(String user, String guest, Socket socket, int port) throws Exception {
 		super();
@@ -107,7 +107,9 @@ public class ChatFrame extends JFrame {
 		frameChat.appendToPane(txtDisplayMessage, STR."<div class='left' style='width: 40%; background-color: #f1f0f0;'>    \{msg}<br>\{LocalDateTime.now().getHour()}:\{LocalDateTime.now().getMinute()}</div>");
 	}
 
-        //TN gửi
+
+
+	//TN gửi
 	public void updateChat_send(String msg) {
 		frameChat.appendToPane(txtDisplayMessage,
                 STR."<table class='bang' style='color: white; clear:both; width: 100%;'><tr align='right'><td style='width: 59%; '></td><td style='width: 40%; background-color: #0084ff;'>\{LocalDateTime.now().getHour()}:\{LocalDateTime.now().getMinute()}<br>\{msg}</td> </tr></table>");
@@ -471,6 +473,7 @@ public class ChatFrame extends JFrame {
 							connect.close();
 							break;
 						}
+
 						if (Decode.checkFile(msgObj)) {
 							System.out.println("Check file: " + URL_DIR + "/" + nameFileReceive);
 							isReceiveFile = true;

@@ -10,7 +10,6 @@ import java.util.regex.Pattern;
 import javax.swing.*;
 import javax.swing.border.*;
 
-import client.MainFrame;
 import tags.Encode;
 import tags.Tags;
 
