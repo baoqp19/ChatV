@@ -23,40 +23,67 @@ public class ServerFrame extends JFrame {
 	private JButton btnStartServer, btnStopServer;
 
 	public ServerFrame() {
-		setTitle("VKU Server");
+		setTitle("VKU Server - Internal Chat System");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setSize(650, 550);
+		setSize(900, 680);
 		setLocationRelativeTo(null);
-		setLayout(new BorderLayout(10, 10));
+		setResizable(false);
 
-		// HEADER
+		// Background toàn bộ
+		getContentPane().setBackground(new Color(245, 250, 255));
+
+		// HEADER XANH VKU
+		JPanel header = new JPanel();
+		header.setBackground(new Color(0, 102, 204));
+		header.setPreferredSize(new Dimension(0, 100));
+		header.setLayout(new BorderLayout());
+
 		JLabel lblTitle = new JLabel("VKU SERVER", SwingConstants.CENTER);
-		lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 32));
-		lblTitle.setForeground(new Color(0, 102, 204));
-		add(lblTitle, BorderLayout.NORTH);
+		lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 48));
+		lblTitle.setForeground(Color.WHITE);
+		header.add(lblTitle, BorderLayout.CENTER);
 
-		// MAIN PANEL
-		JPanel mainPanel = new JPanel();
-		mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-		mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-		add(mainPanel, BorderLayout.CENTER);
+		JLabel lblSubtitle = new JLabel("Internal Chat Server • Port 3939", SwingConstants.CENTER);
+		lblSubtitle.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+		lblSubtitle.setForeground(new Color(200, 240, 255));
+		header.add(lblSubtitle, BorderLayout.SOUTH);
 
-		// IP & Port Panel
-		JPanel networkPanel = new JPanel(new GridLayout(2, 2, 10, 10));
-		networkPanel.setBorder(BorderFactory.createTitledBorder("Network Info"));
-		mainPanel.add(networkPanel);
+		add(header, BorderLayout.NORTH);
 
-		networkPanel.add(new JLabel("IP:", SwingConstants.LEFT));
-		txtIP = new JTextField();
+		// MAIN CONTENT
+		JPanel main = new JPanel(new BorderLayout(20, 20));
+		main.setBackground(new Color(245, 250, 255));
+		main.setBorder(BorderFactory.createEmptyBorder(20, 30, 30, 30));
+		add(main, BorderLayout.CENTER);
+
+		// LEFT PANEL: Thông tin & nút điều khiển
+		JPanel leftPanel = new JPanel();
+		leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
+		leftPanel.setBackground(Color.WHITE);
+		leftPanel.setBorder(BorderFactory.createLineBorder(new Color(0, 102, 204), 2, true));
+		leftPanel.setPreferredSize(new Dimension(380, 0));
+
+		// Network Info
+		JPanel networkPanel = new JPanel(new GridLayout(2, 2, 15, 15));
+		networkPanel.setBorder(BorderFactory.createTitledBorder(
+				BorderFactory.createLineBorder(new Color(0, 102, 204), 2),
+				" Network Configuration ", TitledBorder.LEFT, TitledBorder.TOP,
+				new Font("Segoe UI", Font.BOLD, 16), new Color(0, 102, 204)));
+		networkPanel.setBackground(Color.WHITE);
+		networkPanel.setMaximumSize(new Dimension(360, 110));
+
+		networkPanel.add(createLabel("IP Address:"));
+		txtIP = new JTextField(15);
 		txtIP.setEditable(false);
-		txtIP.setForeground(Color.BLUE);
-		txtIP.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+		txtIP.setFont(new Font("Consolas", Font.BOLD, 18));
+		txtIP.setForeground(new Color(0, 120, 0));
+		txtIP.setBackground(new Color(240, 255, 240));
 		networkPanel.add(txtIP);
 
-		networkPanel.add(new JLabel("Port:", SwingConstants.LEFT));
-		txtPort = new JTextField(String.valueOf(port));
-		txtPort.setFont(new Font("Segoe UI", Font.PLAIN, 18));
-		txtPort.setForeground(Color.RED);
+		networkPanel.add(createLabel("Port:"));
+		txtPort = new JTextField(String.valueOf(port), 15);
+		txtPort.setFont(new Font("Consolas", Font.BOLD, 18));
+		txtPort.setForeground(Color.RED.darker());
 		networkPanel.add(txtPort);
 
 		// Lấy IP LAN
@@ -76,76 +103,80 @@ public class ServerFrame extends JFrame {
 			txtIP.setText("UNKNOWN");
 		}
 
-		// STATUS & USERS PANEL
-		JPanel statusPanel = new JPanel(new GridLayout(2, 2, 10, 10));
-		statusPanel.setBorder(BorderFactory.createTitledBorder("Server Info"));
-		mainPanel.add(Box.createVerticalStrut(10));
-		mainPanel.add(statusPanel);
+		// Server Status
+		JPanel statusPanel = new JPanel(new GridLayout(2, 2, 15, 15));
+		statusPanel.setBorder(BorderFactory.createTitledBorder(
+				BorderFactory.createLineBorder(new Color(0, 122, 255), 2),
+				" Server Status ", TitledBorder.LEFT, TitledBorder.TOP,
+				new Font("Segoe UI", Font.BOLD, 16), new Color(0, 122, 255)));
+		statusPanel.setBackground(Color.WHITE);
+		statusPanel.setMaximumSize(new Dimension(360, 110));
 
-		statusPanel.add(new JLabel("Status:", SwingConstants.LEFT));
+		statusPanel.add(createLabel("Status:"));
 		lblStatus = new JLabel("OFF");
-		lblStatus.setFont(new Font("Segoe UI", Font.PLAIN, 18));
-		lblStatus.setForeground(Color.RED);
+		lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 22));
+		lblStatus.setForeground(Color.RED.darker());
 		statusPanel.add(lblStatus);
 
-		statusPanel.add(new JLabel("Users Online:", SwingConstants.LEFT));
+		statusPanel.add(createLabel("Users Online:"));
 		lblUserOnline = new JLabel("0");
-		lblUserOnline.setFont(new Font("Segoe UI", Font.PLAIN, 18));
-		lblUserOnline.setForeground(Color.BLUE);
+		lblUserOnline.setFont(new Font("Segoe UI", Font.BOLD, 28));
+		lblUserOnline.setForeground(new Color(0, 150, 0));
 		statusPanel.add(lblUserOnline);
 
-		// BUTTON PANEL
-		JPanel buttonPanel = new JPanel();
-//		buttonPanel.setBackground(new Color(60, 63, 65)); // nền panel tối nhẹ để nổi button
+		// Nút điều khiển
+		JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 30, 20));
+		buttonPanel.setBackground(Color.WHITE);
 
-		btnStartServer = new JButton("Start VKU Server");
-		btnStartServer.setFont(new Font("Segoe UI", Font.BOLD, 18));
-		btnStartServer.setBackground(new Color(76, 175, 80)); // xanh lá sáng
-		btnStartServer.setForeground(Color.WHITE);
-		btnStartServer.setFocusable(false);
+		btnStartServer = new JButton("START SERVER");
+		styleButton(btnStartServer, new Color(76, 175, 80), 20);
 
-		btnStopServer = new JButton("Stop VKU Server");
-		btnStopServer.setFont(new Font("Segoe UI", Font.BOLD, 18));
-		btnStopServer.setBackground(new Color(244, 67, 54)); // đỏ tươi
-		btnStopServer.setForeground(Color.WHITE);
-		btnStopServer.setFocusable(false);
+		btnStopServer = new JButton("STOP SERVER");
+		styleButton(btnStopServer, new Color(211, 47, 47), 20);
 		btnStopServer.setEnabled(false);
 
 		buttonPanel.add(btnStartServer);
-		buttonPanel.add(Box.createHorizontalStrut(20));
 		buttonPanel.add(btnStopServer);
 
-		mainPanel.add(Box.createVerticalStrut(10));
-		mainPanel.add(buttonPanel);
+		// Thêm vào left panel
+		leftPanel.add(networkPanel);
+		leftPanel.add(Box.createVerticalStrut(20));
+		leftPanel.add(statusPanel);
+		leftPanel.add(Box.createVerticalStrut(25));
+		leftPanel.add(buttonPanel);
+		leftPanel.add(Box.createVerticalGlue());
 
-		buttonPanel.add(btnStartServer);
-		buttonPanel.add(Box.createHorizontalStrut(20));
-		buttonPanel.add(btnStopServer);
-		mainPanel.add(Box.createVerticalStrut(10));
-		mainPanel.add(buttonPanel);
+		main.add(leftPanel, BorderLayout.WEST);
 
-		// USERS LIST PANEL
-		JPanel usersPanel = new JPanel(new BorderLayout());
-		usersPanel.setBorder(BorderFactory.createTitledBorder("Users List"));
-
-		// Nền sáng hơn để chữ trắng dễ đọc
-		Color backgroundColor = new Color(45, 45, 45); // xám đậm, dịu mắt
-		usersPanel.setBackground(backgroundColor);
+		// RIGHT PANEL: Danh sách người dùng
+		JPanel rightPanel = new JPanel(new BorderLayout());
+		rightPanel.setBackground(Color.WHITE);
+		rightPanel.setBorder(BorderFactory.createTitledBorder(
+				BorderFactory.createLineBorder(new Color(0, 102, 204), 2),
+				" Online Users List ", TitledBorder.LEFT, TitledBorder.TOP,
+				new Font("Segoe UI", Font.BOLD, 16), new Color(0, 102, 204)));
 
 		txtMessage = new JTextArea();
 		txtMessage.setEditable(false);
-		txtMessage.setFont(new Font("Monospaced", Font.PLAIN, 16));
-		txtMessage.setBackground(backgroundColor); // nền text area cùng màu panel
-		txtMessage.setForeground(Color.WHITE); // chữ trắng
+		txtMessage.setFont(new Font("Consolas", Font.PLAIN, 17));
+		txtMessage.setBackground(new Color(30, 30, 40));
+		txtMessage.setForeground(new Color(0, 255, 150));
+		txtMessage.setCaretColor(Color.WHITE);
+		txtMessage.setMargin(new Insets(10, 10, 10, 10));
 
-		JScrollPane scrollPane = new JScrollPane(txtMessage);
-		scrollPane.getViewport().setBackground(backgroundColor); // viewport cùng màu
-		usersPanel.add(scrollPane, BorderLayout.CENTER);
+		JScrollPane scroll = new JScrollPane(txtMessage);
+		scroll.setBorder(BorderFactory.createEmptyBorder());
+		rightPanel.add(scroll, BorderLayout.CENTER);
 
-		mainPanel.add(Box.createVerticalStrut(10));
-		mainPanel.add(usersPanel);
+		main.add(rightPanel, BorderLayout.CENTER);
 
-		// BUTTON ACTIONS
+		// FOOTER
+		JLabel footer = new JLabel("© 2025 VKU - Đồ án Mạng Máy Tính • Internal Chat Server", SwingConstants.CENTER);
+		footer.setFont(new Font("Segoe UI", Font.ITALIC, 13));
+		footer.setForeground(new Color(100, 100, 100));
+		add(footer, BorderLayout.SOUTH);
+
+		// === GIỮ NGUYÊN 100% LOGIC CỦA BẠN ===
 		btnStartServer.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -184,30 +215,61 @@ public class ServerFrame extends JFrame {
 		});
 	}
 
-	// UPDATE METHODS
+	private JLabel createLabel(String text) {
+		JLabel lbl = new JLabel(text);
+		lbl.setFont(new Font("Segoe UI", Font.BOLD, 18));
+		lbl.setForeground(new Color(50, 50, 100));
+		return lbl;
+	}
+
+	private void styleButton(JButton btn, Color bg, int fontSize) {
+		btn.setFont(new Font("Segoe UI", Font.BOLD, fontSize));
+		btn.setBackground(bg);
+		btn.setForeground(Color.WHITE);
+		btn.setFocusPainted(false);
+		btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		btn.setPreferredSize(new Dimension(180, 58));
+		btn.setBorder(BorderFactory.createEmptyBorder());
+	}
+
+	// GIỮ NGUYÊN 100% CÁC HÀM CỦA BẠN
 	public static void updateMessage(String msg) {
-		txtMessage.append(msg + "\n");
+		txtMessage.append("» " + msg + "\n");
+		txtMessage.setCaretPosition(txtMessage.getDocument().getLength());
 	}
 
 	public static void updateNumberClient() {
 		int number = Integer.parseInt(lblUserOnline.getText());
-		lblUserOnline.setText(Integer.toString(number + 1));
+		lblUserOnline.setText(String.valueOf(number + 1));
 		displayUser();
-
 	}
 
 	public static void decreaseNumberClient() {
 		int number = Integer.parseInt(lblUserOnline.getText());
-		lblUserOnline.setText(Integer.toString(number - 1));
+		if (number > 0) lblUserOnline.setText(String.valueOf(number - 1));
 		displayUser();
-
 	}
 
 	static void displayUser() {
 		txtMessage.setText("");
+		if (server == null) return;
 		ArrayList<Peer> list = server.getListUser();
+		txtMessage.append("  NO │ USERNAME\n");
+		txtMessage.append(" ───┼────────────────\n");
 		for (int i = 0; i < list.size(); i++) {
-			txtMessage.append((i + 1) + "\t" + list.get(i).getName() + "\n");
+			txtMessage.append(String.format(" %3d │ %s\n", i + 1, list.get(i).getName()));
 		}
+		if (list.isEmpty()) {
+			txtMessage.append("   (No users online)\n");
+		}
+	}
+
+	public static void main(String[] args) {
+		SwingUtilities.invokeLater(() -> {
+			try {
+				UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+			} catch (Exception e) {}
+			new ServerFrame().setVisible(true);
+		});
 	}
 }

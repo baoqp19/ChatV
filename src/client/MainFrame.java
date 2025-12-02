@@ -35,6 +35,7 @@ public class MainFrame extends JFrame implements WindowListener {
 		});
 	}
 
+	// Constructor chính – giữ nguyên logic của bạn
 	public MainFrame(String ip, int portClientArg, String userName, String msg, int portServerArg) throws Exception {
 		IPClient = ip;
 		portClient = portClientArg;
@@ -45,58 +46,75 @@ public class MainFrame extends JFrame implements WindowListener {
 
 		EventQueue.invokeLater(() -> {
 			try {
-				MainFrame frame = new MainFrame();
-				frame.setVisible(true);
+				new MainFrame().setVisible(true);   // vẫn tạo frame mới như cũ
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		});
 	}
 
+	// Constructor mặc định – CHỈ THAY GIAO DIỆN Ở ĐÂY
 	public MainFrame() throws Exception {
 		setTitle("VKU Client");
 		this.addWindowListener(this);
 		setResizable(false);
 
-		// Tạo client
+		// Tạo client đúng như cũ
 		clientNode = new Client(IPClient, portClient, nameUser, dataUser, portServer);
 
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 680, 570);
+		setSize(720, 600);
+		setLocationRelativeTo(null);
+
 		contentPane = new JPanel();
-		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+		contentPane.setBackground(new Color(245, 250, 255));
+		contentPane.setBorder(new EmptyBorder(20, 20, 20, 20));
+		contentPane.setLayout(new BorderLayout(20, 20));
 		setContentPane(contentPane);
-		contentPane.setLayout(null);
 
-		JLabel lblTitle = new JLabel("Chat Client");
-		lblTitle.setForeground(Color.RED);
-		lblTitle.setFont(new Font("Tahoma", Font.PLAIN, 32));
-		lblTitle.setBounds(226, 10, 255, 64);
-		contentPane.add(lblTitle);
+		// === HEADER ===
+		JPanel header = new JPanel(new BorderLayout());
+		header.setBackground(new Color(0, 102, 204));
+		header.setPreferredSize(new Dimension(0, 100));
 
-		JLabel lblUser = new JLabel("Username: " + nameUser);
-		lblUser.setFont(new Font("Tahoma", Font.PLAIN, 18));
-		lblUser.setBounds(27, 80, 309, 47);
-		contentPane.add(lblUser);
+		JLabel lblTitle = new JLabel("VKU CHAT CLIENT", SwingConstants.CENTER);
+		lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 38));
+		lblTitle.setForeground(Color.WHITE);
+		header.add(lblTitle, BorderLayout.CENTER);
 
-		// Panel danh sách bạn bè
-		JPanel panelFriends = new JPanel();
-		panelFriends.setBorder(new TitledBorder(new CompoundBorder(null, UIManager.getBorder("CheckBoxMenuItem.border")),
-				"Online Users", TitledBorder.LEADING, TitledBorder.TOP, null, Color.BLACK));
-		panelFriends.setBackground(Color.WHITE);
-		panelFriends.setBounds(27, 164, 613, 344);
-		panelFriends.setLayout(new GridLayout(1, 1));
-		contentPane.add(panelFriends);
+		JLabel lblUser = new JLabel("  Username: " + nameUser);
+		lblUser.setFont(new Font("Segoe UI", Font.BOLD, 20));
+		lblUser.setForeground(new Color(200, 255, 255));
+		lblUser.setIconTextGap(12);
+		header.add(lblUser, BorderLayout.WEST);
+
+		contentPane.add(header, BorderLayout.NORTH);
+
+		// === MAIN CONTENT (CENTER + EAST) ===
+		JPanel centerPanel = new JPanel(new BorderLayout(15, 15));
+		centerPanel.setOpaque(false);
+
+		// Danh sách người online
+		JPanel friendsPanel = new JPanel(new BorderLayout());
+		friendsPanel.setBackground(Color.WHITE);
+		friendsPanel.setBorder(BorderFactory.createTitledBorder(
+				BorderFactory.createLineBorder(new Color(0, 102, 204), 2, true),
+				"  Online Users  ", TitledBorder.LEFT, TitledBorder.TOP,
+				new Font("Segoe UI", Font.BOLD, 16), new Color(0, 102, 204)));
 
 		listActive = new JList<>(model);
-		listActive.setBorder(new EmptyBorder(5, 5, 5, 5));
+		listActive.setFont(new Font("Segoe UI", Font.PLAIN, 18));
 		listActive.setBackground(Color.WHITE);
-		listActive.setForeground(Color.RED);
-		listActive.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-		JScrollPane scrollPane = new JScrollPane(listActive);
-		panelFriends.add(scrollPane);
+		listActive.setSelectionBackground(new Color(0, 120, 215));
+		listActive.setSelectionForeground(Color.WHITE);
+		listActive.setFixedCellHeight(50);
 
-		// Mouse listener để kết nối chat
+		JScrollPane scrollPane = new JScrollPane(listActive);
+		scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+		friendsPanel.add(scrollPane, BorderLayout.CENTER);
+		centerPanel.add(friendsPanel, BorderLayout.CENTER);
+
+		// Click để chat (giữ nguyên logic cũ)
 		listActive.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
@@ -108,63 +126,69 @@ public class MainFrame extends JFrame implements WindowListener {
 			}
 		});
 
-		// Panel server
-		JPanel panelServer = new JPanel();
-		panelServer.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.LOWERED, Color.WHITE, new Color(160, 160, 160)),
-				"VKU Server", TitledBorder.LEADING, TitledBorder.TOP, null, SystemColor.textHighlight));
-		panelServer.setForeground(Color.BLUE);
-		panelServer.setBackground(Color.BLACK);
-		panelServer.setBounds(453, 10, 187, 108);
-		panelServer.setLayout(null);
-		contentPane.add(panelServer);
+		// === PANEL SERVER INFO (bên phải) ===
+		JPanel serverPanel = new JPanel(new GridBagLayout());
+		serverPanel.setBackground(Color.WHITE);
+		serverPanel.setBorder(BorderFactory.createTitledBorder(
+				BorderFactory.createLineBorder(new Color(0, 122, 255), 2, true),
+				" VKU Server ", TitledBorder.CENTER, TitledBorder.TOP,
+				new Font("Segoe UI", Font.BOLD, 15), new Color(0, 122, 255)));
+		serverPanel.setPreferredSize(new Dimension(260, 0));
 
-		JLabel lblIP = new JLabel("IP Address");
-		lblIP.setFont(new Font("Tahoma", Font.PLAIN, 14));
-		lblIP.setForeground(Color.WHITE);
-		lblIP.setBounds(10, 10, 85, 24);
-		panelServer.add(lblIP);
+		GridBagConstraints gbc = new GridBagConstraints();
+		gbc.insets = new Insets(8, 10, 8, 10);
+		gbc.fill = GridBagConstraints.HORIZONTAL;
 
-		JLabel lblPort = new JLabel("Port Server");
-		lblPort.setFont(new Font("Tahoma", Font.PLAIN, 14));
-		lblPort.setForeground(Color.WHITE);
-		lblPort.setBounds(10, 44, 85, 13);
-		panelServer.add(lblPort);
-
-		JLabel lblIPValue = new JLabel("127.0.0.1");
+		String localIP = "127.0.0.1";
 		try {
-			lblIPValue.setText(Inet4Address.getLocalHost().getHostAddress());
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-		}
-		lblIPValue.setFont(new Font("Tahoma", Font.BOLD, 12));
-		lblIPValue.setForeground(Color.GREEN);
-		lblIPValue.setBounds(88, 9, 115, 24);
-		panelServer.add(lblIPValue);
+			localIP = Inet4Address.getLocalHost().getHostAddress();
+		} catch (UnknownHostException ignored) {}
 
-		JLabel lblPortValue = new JLabel(String.valueOf(portServer));
-		lblPortValue.setFont(new Font("Tahoma", Font.BOLD, 18));
-		lblPortValue.setForeground(Color.RED);
-		lblPortValue.setBounds(88, 44, 74, 17);
-		panelServer.add(lblPortValue);
+		addServerRow(serverPanel, gbc, 0, "IP Address", localIP, Color.GREEN.darker());
+		addServerRow(serverPanel, gbc, 1, "Port Server", String.valueOf(portServer), Color.RED);
+		addServerRow(serverPanel, gbc, 2, "Port Client", String.valueOf(portClient), new Color(255, 20, 147));
 
-		JLabel lblPortClient = new JLabel("Port Client");
-		lblPortClient.setFont(new Font("Tahoma", Font.PLAIN, 14));
-		lblPortClient.setForeground(Color.WHITE);
-		lblPortClient.setBounds(10, 81, 74, 13);
-		panelServer.add(lblPortClient);
-
-		JLabel lblPortClientValue = new JLabel(String.valueOf(portClient));
-		lblPortClientValue.setFont(new Font("Tahoma", Font.BOLD, 18));
-		lblPortClientValue.setForeground(new Color(255, 20, 147));
-		lblPortClientValue.setBounds(88, 80, 89, 13);
-		panelServer.add(lblPortClientValue);
+		gbc.gridy = 3;
+		gbc.gridwidth = 2;
+		gbc.anchor = GridBagConstraints.CENTER;
+		gbc.insets = new Insets(20, 10, 10, 10);
 
 		btnSaveServer = new JButton("Save Server");
-		btnSaveServer.setBounds(488, 128, 112, 27);
+		btnSaveServer.setFont(new Font("Segoe UI", Font.BOLD, 14));
+		btnSaveServer.setBackground(new Color(0, 170, 0));
+		btnSaveServer.setForeground(Color.WHITE);
+		btnSaveServer.setFocusPainted(false);
+		btnSaveServer.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		btnSaveServer.addActionListener(e -> SaveServer());
-		contentPane.add(btnSaveServer);
+		serverPanel.add(btnSaveServer, gbc);
+
+		centerPanel.add(serverPanel, BorderLayout.EAST);
+		contentPane.add(centerPanel, BorderLayout.CENTER);
+
+		// Footer nhẹ
+		JLabel footer = new JLabel("Click vào tên để bắt đầu chat • VKU Chat Client 2025", SwingConstants.CENTER);
+		footer.setFont(new Font("Segoe UI", Font.ITALIC, 13));
+		footer.setForeground(new Color(100, 100, 100));
+		contentPane.add(footer, BorderLayout.SOUTH);
 	}
 
+	private void addServerRow(JPanel panel, GridBagConstraints gbc, int row, String label, String value, Color valueColor) {
+		gbc.gridy = row;
+		gbc.gridx = 0;
+		gbc.weightx = 0.4;
+		JLabel l1 = new JLabel(label);
+		l1.setFont(new Font("Segoe UI", Font.BOLD, 14));
+		panel.add(l1, gbc);
+
+		gbc.gridx = 1;
+		gbc.weightx = 0.6;
+		JLabel l2 = new JLabel(value);
+		l2.setFont(new Font("Consolas", Font.BOLD, 16));
+		l2.setForeground(valueColor);
+		panel.add(l2, gbc);
+	}
+
+	// ============== TẤT CẢ LOGIC CỦA BẠN GIỮ NGUYÊN HOÀN TOÀN ==============
 	private void connectChat() {
 		int n = JOptionPane.showConfirmDialog(this, "Would you like to connect to this account?", "Connect",
 				JOptionPane.YES_NO_OPTION);
@@ -219,7 +243,6 @@ public class MainFrame extends JFrame implements WindowListener {
 		return Tags.show(frameMessage, msg, type);
 	}
 
-	// WindowListener
 	@Override public void windowOpened(WindowEvent e) {}
 	@Override public void windowClosing(WindowEvent e) {
 		try { clientNode.exit(); } catch (Exception ex) { ex.printStackTrace(); }

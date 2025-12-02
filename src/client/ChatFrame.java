@@ -17,6 +17,8 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.time.LocalDateTime;
 
@@ -32,13 +34,13 @@ import javax.swing.JTextField;
 import javax.swing.JTextPane;
 import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
-import javax.swing.text.html.HTMLDocument;
-import javax.swing.text.html.HTMLEditorKit;
 
 import data.DataFile;
 import tags.Decode;
 import tags.Encode;
 import tags.Tags;
+
+import static tags.Encode.sendMessage;
 
 public class ChatFrame extends JFrame {
 
@@ -63,6 +65,8 @@ public class ChatFrame extends JFrame {
 	private ChatFrame frame = this;
 	private JProgressBar progressBar;
 	JButton btnSend;
+	private ControllerChatFrame frameChat = new ControllerChatFrame();
+	int voicePort = 5500;
 
 	public ChatFrame(String user, String guest, Socket socket, int port) throws Exception {
 		super();
@@ -100,30 +104,23 @@ public class ChatFrame extends JFrame {
 
         //TN nhận
 	public void updateChat_receive(String msg) {
-		appendToPane(txtDisplayMessage, "<div class='left' style='width: 40%; background-color: #f1f0f0;'>" + "    "
-				+ msg + "<br>" + LocalDateTime.now().getHour() + ":" + LocalDateTime.now().getMinute() + "</div>");
+		frameChat.appendToPane(txtDisplayMessage, STR."<div class='left' style='width: 40%; background-color: #f1f0f0;'>    \{msg}<br>\{LocalDateTime.now().getHour()}:\{LocalDateTime.now().getMinute()}</div>");
 	}
 
         //TN gửi
 	public void updateChat_send(String msg) {
-		appendToPane(txtDisplayMessage,
-				"<table class='bang' style='color: white; clear:both; width: 100%;'>" + "<tr align='right'>"
-						+ "<td style='width: 59%; '></td>" + "<td style='width: 40%; background-color: #0084ff;'>"
-						+ LocalDateTime.now().getHour() + ":" + LocalDateTime.now().getMinute() + "<br>" + msg
-						+ "</td> </tr>" + "</table>");
+		frameChat.appendToPane(txtDisplayMessage,
+                STR."<table class='bang' style='color: white; clear:both; width: 100%;'><tr align='right'><td style='width: 59%; '></td><td style='width: 40%; background-color: #0084ff;'>\{LocalDateTime.now().getHour()}:\{LocalDateTime.now().getMinute()}<br>\{msg}</td> </tr></table>");
 	}
 
-        
+
 	public void updateChat_notify(String msg) {
-		appendToPane(txtDisplayMessage,
-				"<table class='bang' style='color: white; clear:both; width: 100%;'>" + "<tr align='right'>"
-						+ "<td style='width: 59%; '></td>" + "<td style='width: 40%; background-color: #f1c40f;'>" + msg
-						+ "</td> </tr>" + "</table>");
+		frameChat.appendToPane(txtDisplayMessage,
+                STR."<table class='bang' style='color: white; clear:both; width: 100%;'><tr align='right'><td style='width: 59%; '></td><td style='width: 40%; background-color: #f1c40f;'>\{msg}</td> </tr></table>");
 	}
 
 	public void updateChat_send_Symbol(String msg) {
-		appendToPane(txtDisplayMessage, "<table style='width: 100%;'>" + "<tr align='right'>"
-				+ "<td style='width: 59%;'></td>" + "<td style='width: 40%;'>" + msg + "</td> </tr>" + "</table>");
+		frameChat.appendToPane(txtDisplayMessage, STR."<table style='width: 100%;'><tr align='right'><td style='width: 59%;'></td><td style='width: 40%;'>\{msg}</td> </tr></table>");
 	}
 
 	/**
@@ -176,7 +173,21 @@ public class ChatFrame extends JFrame {
 		btnPhone.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				System.out.println("Voice call");
+				try {
+					DatagramSocket voiceSocket = new DatagramSocket();
+					InetAddress peerAddress = socketChat.getInetAddress();
+
+					// Gửi audio
+					VoiceCallThread sendThread = new VoiceCallThread(voiceSocket, peerAddress, voicePort);
+					sendThread.start();
+
+					// Nhận audio
+					VoiceReceiveThread receiveThread = new VoiceReceiveThread(voiceSocket);
+					receiveThread.start();
+
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
 			}
 		});
 
@@ -209,7 +220,7 @@ public class ChatFrame extends JFrame {
 		txtDisplayMessage.setBackground(Color.BLACK);
 		txtDisplayMessage.setForeground(Color.WHITE);
 		txtDisplayMessage.setFont(new Font("Courier New", Font.PLAIN, 18));
-		appendToPane(txtDisplayMessage, "<div class='clear' style='background-color:white'></div>"); // set default
+		frameChat.appendToPane(txtDisplayMessage, "<div class='clear' style='background-color:white'></div>"); // set default
 
 		panel_6.setBounds(0, 66, 562, 323);
 		panel_6.setLayout(null);
@@ -229,7 +240,7 @@ public class ChatFrame extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				String msg = "<img src='" + ChatFrame.class.getResource("/image/like32.png") + "'></img>";
 				try {
-					chat.sendMessage(Encode.sendMessage(msg));
+					chat.sendMessage(sendMessage(msg));
 				} catch (Exception e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
@@ -250,7 +261,7 @@ public class ChatFrame extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				String msg = "<img src='" + ChatFrame.class.getResource("/image/love32.png") + "'></img>";
 				try {
-					chat.sendMessage(Encode.sendMessage(msg));
+					chat.sendMessage(sendMessage(msg));
 				} catch (Exception e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
@@ -270,7 +281,7 @@ public class ChatFrame extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				String msg = "<img src='" + ChatFrame.class.getResource("/image/smile32.png") + "'></img>";
 				try {
-					chat.sendMessage(Encode.sendMessage(msg));
+					chat.sendMessage(sendMessage(msg));
 				} catch (Exception e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
@@ -290,7 +301,7 @@ public class ChatFrame extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				String msg = "<img src='" + ChatFrame.class.getResource("/image/sad32.png") + "'></img>";
 				try {
-					chat.sendMessage(Encode.sendMessage(msg));
+					chat.sendMessage(sendMessage(msg));
 				} catch (Exception e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
@@ -308,9 +319,9 @@ public class ChatFrame extends JFrame {
 		btnNewButton_8.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				String msg = "<img src='" + ChatFrame.class.getResource("/image/angry32.png") + "'></img>";
+				String msg = "<img src='" + ChatFrame.class.getResource("/image/img2.png") + "'></img>";
 				try {
-					chat.sendMessage(Encode.sendMessage(msg));
+					chat.sendMessage(sendMessage(msg));
 				} catch (Exception e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
@@ -318,7 +329,7 @@ public class ChatFrame extends JFrame {
 				updateChat_send_Symbol(msg);
 			}
 		});
-		btnNewButton_8.setIcon(new ImageIcon(ChatFrame.class.getResource("/image/angry32.png")));
+		btnNewButton_8.setIcon(new ImageIcon(ChatFrame.class.getResource("/image/img2.png")));
 		btnNewButton_8.setBounds(495, 22, 44, 41);
 		btnNewButton_8.setBorder(new EmptyBorder(0, 0, 0, 0));
 		btnNewButton_8.setContentAreaFilled(false);
@@ -347,7 +358,7 @@ public class ChatFrame extends JFrame {
 					return;
 				txtMessage.setText("");
 				try {
-					chat.sendMessage(Encode.sendMessage(msg));
+					chat.sendMessage(sendMessage(msg));
 				} catch (Exception e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
@@ -540,6 +551,7 @@ public class ChatFrame extends JFrame {
 			}
 		}
 
+
 		private void getData(File file) throws Exception {
 			File fileData = file;
 			if (fileData.exists()) {
@@ -625,7 +637,7 @@ public class ChatFrame extends JFrame {
 							Thread.sleep(1000);
 							InputStream input = new FileInputStream(URL_DIR + nameFileReceive);
 							OutputStream output = new FileOutputStream(file.getAbsolutePath());
-							copyFileReceive(input, output, URL_DIR + nameFileReceive);
+							frameChat.copyFileReceive(input, output, URL_DIR + nameFileReceive);
 						} catch (Exception e) {
 							Tags.show(frame, "Your file receive has error!!!", false);
 						}
@@ -669,30 +681,31 @@ public class ChatFrame extends JFrame {
 
 	}
 
-	public void copyFileReceive(InputStream inputStr, OutputStream outputStr, String path) throws IOException {
-		byte[] buffer = new byte[1024];
-		int lenght;
-		while ((lenght = inputStr.read(buffer)) > 0) {
-			outputStr.write(buffer, 0, lenght);
-		}
-		inputStr.close();
-		outputStr.close();
-		File fileTemp = new File(path);
-		if (fileTemp.exists()) {
-			fileTemp.delete();
-		}
-	}
+//	public void copyFileReceive(InputStream inputStr, OutputStream outputStr, String path) throws IOException {
+//		byte[] buffer = new byte[1024];
+//		int lenght;
+//		while ((lenght = inputStr.read(buffer)) > 0) {
+//			outputStr.write(buffer, 0, lenght);
+//		}
+//		inputStr.close();
+//		outputStr.close();
+//		File fileTemp = new File(path);
+//		if (fileTemp.exists()) {
+//			fileTemp.delete();
+//		}
+//	}
+//
+//	private void appendToPane(JTextPane tp, String msg) {
+//		HTMLDocument doc = (HTMLDocument) tp.getDocument();
+//		HTMLEditorKit editorKit = (HTMLEditorKit) tp.getEditorKit();
+//		try {
+//
+//			editorKit.insertHTML(doc, doc.getLength(), msg, 0, 0, null);
+//			tp.setCaretPosition(doc.getLength());
+//
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//		}
+//	}
 
-	private void appendToPane(JTextPane tp, String msg) {
-		HTMLDocument doc = (HTMLDocument) tp.getDocument();
-		HTMLEditorKit editorKit = (HTMLEditorKit) tp.getEditorKit();
-		try {
-
-			editorKit.insertHTML(doc, doc.getLength(), msg, 0, 0, null);
-			tp.setCaretPosition(doc.getLength());
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
 }

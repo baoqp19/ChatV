@@ -135,6 +135,23 @@ public class Decode {
 		return false;
 	}
 
+	// Lấy nội dung giữa 2 tag bất kỳ
+	public static String getBetweenTags(String src, String tagName) {
+		String openTag = "<" + tagName + ">";
+		String closeTag = "</" + tagName + ">";
+
+		int start = src.indexOf(openTag);
+		int end = src.indexOf(closeTag);
+
+		if (start == -1 || end == -1 || end <= start) {
+			return ""; // hoặc null tùy bạn muốn
+		}
+
+		start += openTag.length();
+		return src.substring(start, end);
+	}
+
+
 	public static boolean checkFeedBack(String msg) {
 		if (feedBack.matcher(msg).matches())
 			return true;
