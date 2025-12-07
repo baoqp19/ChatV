@@ -36,7 +36,6 @@ public class Encode {
 			findMessage = checkMessage.matcher(message);
 		}
 		result += message;
-//		System.out.println("(encode)Dau ra message: " + Tags.CHAT_MSG_OPEN_TAG + result + Tags.CHAT_MSG_CLOSE_TAG);
 		return Tags.CHAT_MSG_OPEN_TAG + result + Tags.CHAT_MSG_CLOSE_TAG;
 	}
 

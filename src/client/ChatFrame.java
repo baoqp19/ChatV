@@ -1,8 +1,6 @@
 package client;
 
-import java.awt.Color;
-import java.awt.EventQueue;
-import java.awt.Font;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
@@ -23,17 +21,10 @@ import java.net.Socket;
 import java.time.LocalDateTime;
 import java.util.Random;
 
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JProgressBar;
-import javax.swing.JScrollPane;
-import javax.swing.JTextField;
-import javax.swing.JTextPane;
-import javax.swing.WindowConstants;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Line;
+import javax.sound.sampled.Mixer;
+import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
 import data.DataFile;
@@ -59,6 +50,7 @@ public class ChatFrame extends JFrame {
 	// Frame
 	private static final long serialVersionUID = 1L;
 	private JPanel contentPane;
+	private VoiceInfo voiceInfo;
 	private JTextField txtMessage;
 	private JTextPane txtDisplayMessage;
 	private JButton btnSendFile;
@@ -176,16 +168,33 @@ public class ChatFrame extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				try {
+
+					if (voiceInfo == null) {
+						JOptionPane.showMessageDialog(null,
+								"Không có thông tin peer để chạy voice!",
+								"Error", JOptionPane.ERROR_MESSAGE);
+						return;
+					}
+
+					// ⭐ Lấy IP và PORT của peer từ SESSION_ACCEPT
+					InetAddress peerAddress = voiceInfo.peerAddress;
+					int peerVoicePort = voiceInfo.peerVoicePort;
+
+					// ⭐ Tạo UDP socket cho audio
 					DatagramSocket voiceSocket = new DatagramSocket();
-					InetAddress peerAddress = socketChat.getInetAddress();
 
-					// Gửi audio
-					VoiceCallThread sendThread = new VoiceCallThread(voiceSocket, peerAddress, voicePort);
+					// ⭐ Khởi tạo 2 thread send/receive
+					VoiceSendThread sendThread =
+							new VoiceSendThread(voiceSocket, peerAddress, peerVoicePort);
+
+					VoiceReceiveThread receiveThread =
+							new VoiceReceiveThread(voiceSocket);
+
 					sendThread.start();
-
-					// Nhận audio
-					VoiceReceiveThread receiveThread = new VoiceReceiveThread(voiceSocket);
 					receiveThread.start();
+
+					System.out.println("Voice call started → send to " +
+							peerAddress + ":" + peerVoicePort);
 
 				} catch (Exception ex) {
 					ex.printStackTrace();
@@ -219,7 +228,7 @@ public class ChatFrame extends JFrame {
 		txtDisplayMessage = new JTextPane();
 		txtDisplayMessage.setEditable(false);
 		txtDisplayMessage.setContentType("text/html");
-		txtDisplayMessage.setBackground(Color.BLACK);
+		txtDisplayMessage.setBackground(new Color(54, 57, 63));
 		txtDisplayMessage.setForeground(Color.WHITE);
 		txtDisplayMessage.setFont(new Font("Courier New", Font.PLAIN, 18));
 		frameChat.appendToPane(txtDisplayMessage, "<div class='clear' style='background-color:white'></div>"); // set default
@@ -350,7 +359,9 @@ public class ChatFrame extends JFrame {
 		btnSend = new JButton();
 		btnSend.setBorder(new EmptyBorder(0, 0, 0, 0));
 		btnSend.setContentAreaFilled(false);
-		btnSend.setIcon(new ImageIcon(ChatFrame.class.getResource("/image/send32.png")));
+		ImageIcon originalIcon = new ImageIcon(ChatFrame.class.getResource("/image/send32.png"));
+		Image scaledImage = originalIcon.getImage().getScaledInstance(36, 36, Image.SCALE_SMOOTH);
+		btnSend.setIcon(new ImageIcon(scaledImage));
 		btnSend.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -409,9 +420,10 @@ public class ChatFrame extends JFrame {
 		panel_3.add(btnSendFile);
 
 		txtMessage = new JTextField();
-		txtMessage.setBounds(0, 5, 433, 58);
+		txtMessage.setBounds(0, 5, 433, 45);
 		panel_3.add(txtMessage);
 		txtMessage.setColumns(10);
+		txtMessage.setFont(new Font("Courier New", Font.PLAIN, 18));
 		txtMessage.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e) {
@@ -451,18 +463,63 @@ public class ChatFrame extends JFrame {
 			super.run();
 			System.out.println("Chat Room start");
 			OutputStream out = null;
+
 			while (!isStop) {
 				try {
 					inPeer = new ObjectInputStream(connect.getInputStream());
 					Object obj = inPeer.readObject();
+					System.out.println("obj" + obj);
+
+					// ======================= STRING MESSAGE ==========================
 					if (obj instanceof String) {
 						String msgObj = obj.toString();
+						System.out.println("msgObj" + msgObj);
+						// ============================ VOICE SESSION ACCEPT ============================
+						if (msgObj.startsWith("<SESSION_ACCEPT>")) {
+
+							System.out.println("SESSION_ACCEPT received: " + msgObj);
+
+							String[] peers = msgObj.split("<PEER>");
+							voiceInfo = null;
+
+							for (String p : peers) {
+								if (p.contains("<PEER_NAME>")
+										&& p.contains("<IP>")
+										&& p.contains("<PORT>")) {
+
+									String name = p.split("<PEER_NAME>")[1].split("</PEER_NAME>")[0];
+									String rawIP = p.split("<IP>")[1].split("</IP>")[0];
+									String ip = rawIP.replace("/", "").trim();
+									int port = Integer.parseInt(
+											p.split("<PORT>")[1].split("</PORT>")[0]
+									);
+
+									// CHỈ LẤY PEER KHÁC MÌNH
+//									if (!name.equals(myName)) {
+									voiceInfo = new VoiceInfo(InetAddress.getByName(ip), port, name);
+
+									System.out.println("Voice Peer FOUND:");
+									System.out.println(" Name : " + name);
+									System.out.println(" IP   : " + ip);
+									System.out.println(" Port : " + port);
+//									}
+								}
+							}
+
+							if (voiceInfo == null) {
+								System.out.println("⚠ No peer found");
+							}
+
+							break;    // <<< FIX QUAN TRỌNG NHẤT
+						}
+						// ============================================================================
+
+
+						// ================== CHAT CLOSE ===================
 						if (msgObj.equals(Tags.CHAT_CLOSE_TAG)) {
 							isStop = true;
-							Tags.show(frame, nameGuest + "This windows will also be closed.",
-									false);
+							Tags.show(frame, nameGuest + " This window will close.", false);
 							try {
-								isStop = true;
 								frame.dispose();
 								chat.sendMessage(Tags.CHAT_CLOSE_TAG);
 								chat.stopChat();
@@ -474,77 +531,73 @@ public class ChatFrame extends JFrame {
 							break;
 						}
 
+						// ================== FILE REQUEST ===================
 						if (Decode.checkFile(msgObj)) {
 							System.out.println("Check file: " + URL_DIR + "/" + nameFileReceive);
 							isReceiveFile = true;
+
 							nameFileReceive = msgObj.substring(10, msgObj.length() - 11);
 							File fileReceive = new File(URL_DIR + "/" + nameFileReceive);
+
 							if (!fileReceive.exists()) {
 								fileReceive.createNewFile();
 							}
+
 							String msg = Tags.FILE_REQ_ACK_OPEN_TAG + Integer.toBinaryString(portServer)
 									+ Tags.FILE_REQ_ACK_CLOSE_TAG;
 							sendMessage(msg);
+						}
 
-						} else if (Decode.checkFeedBack(msgObj)) {
+						// ================== FILE FEEDBACK ===================
+						else if (Decode.checkFeedBack(msgObj)) {
 							btnSendFile.setEnabled(false);
 
-							new Thread(new Runnable() {
-								@Override
-								public void run() {
-									try {
-										sendMessage(Tags.FILE_DATA_BEGIN_TAG);
-										updateChat_notify("You are sending file: " + nameFile);
-										isSendFile = false;
-//										sendFile(txtMessage.getText());
-									} catch (Exception e) {
-										e.printStackTrace();
-									}
+							new Thread(() -> {
+								try {
+									sendMessage(Tags.FILE_DATA_BEGIN_TAG);
+									updateChat_notify("You are sending file: " + nameFile);
+									isSendFile = false;
+								} catch (Exception e) {
+									e.printStackTrace();
 								}
 							}).start();
-						} else if (msgObj.equals(Tags.FILE_DATA_BEGIN_TAG)) {
+						}
+
+						// ================== FILE START RECEIVE ===================
+						else if (msgObj.equals(Tags.FILE_DATA_BEGIN_TAG)) {
 							finishReceive = false;
 							lblReceive.setVisible(true);
 							out = new FileOutputStream(URL_DIR + nameFileReceive);
-						} else if (msgObj.equals(Tags.FILE_DATA_CLOSE_TAG)) {
-							System.out.println("Close file: " + URL_DIR + "\\" + nameFileReceive);
+						}
 
-							updateChat_receive(
-									"You receive file: " + nameFileReceive + " with size " + sizeReceive + " KB");
+						// ================== FILE END RECEIVE ===================
+						else if (msgObj.equals(Tags.FILE_DATA_CLOSE_TAG)) {
+							updateChat_receive("You received file: " + nameFileReceive + " (" + sizeReceive + " KB)");
 							sizeReceive = 0;
+
 							out.flush();
 							out.close();
 							lblReceive.setVisible(false);
-							System.out.println("Select file save location");
 
-							new Thread(new Runnable() {
+							new Thread(this::showSaveFile).start();
 
-								@Override
-								public void run() {
-									System.out.println("Select file save location");
-									showSaveFile();
-								}
-							}).start();
 							finishReceive = true;
-//						} else if (msgObj.equals(Tags.FILE_DATA_CLOSE_TAG) && isFileLarge == true) {
-//							updateChat_receive("File " + nameFileReceive + " too large to receive");
-//							sizeReceive = 0;
-//							out.flush();
-//							out.close();
-//							lblReceive.setVisible(false);
-//							finishReceive = true;
-						} else {
+						}
 
+						// ================== NORMAL CHAT MESSAGE ===================
+						else {
 							String message = Decode.getMessage(msgObj);
-
 							updateChat_receive(message);
 						}
-					} else if (obj instanceof DataFile) {
+					}
 
+					// ======================= FILE DATA BLOCK ==========================
+					else if (obj instanceof DataFile) {
 						DataFile data = (DataFile) obj;
 						++sizeReceive;
 						out.write(data.data);
 					}
+
 				} catch (Exception e) {
 					File fileTemp = new File(URL_DIR + nameFileReceive);
 					if (fileTemp.exists() && !finishReceive) {
