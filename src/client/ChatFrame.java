@@ -21,9 +21,6 @@ import java.net.Socket;
 import java.time.LocalDateTime;
 import java.util.Random;
 
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Line;
-import javax.sound.sampled.Mixer;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
@@ -48,6 +45,7 @@ public class ChatFrame extends JFrame {
 	private int portServer = 0;
 	int voicePort = 60000 + new Random().nextInt(2000);
 	// Frame
+
 	private static final long serialVersionUID = 1L;
 	private JPanel contentPane;
 	private VoiceInfo voiceInfo;
@@ -58,61 +56,44 @@ public class ChatFrame extends JFrame {
 	private ChatFrame frame = this;
 	private JProgressBar progressBar;
 	JButton btnSend;
+	private int port;
+	private int portVoice;
 	private ControllerChatFrame frameChat = new ControllerChatFrame();
 
 	public ChatFrame(String user, String guest, Socket socket, int port) throws Exception {
-		super();
-		nameUser = user;
-		nameGuest = guest;
-		socketChat = socket;
-		frame = new ChatFrame(user, guest, socket, port, port);
-		frame.setVisible(true);
+		this(user, guest, socket, port, port);  // KHÔNG tạo frame mới!
 	}
 
-	public ChatFrame(String user, String guest, Socket socket, int port, int a) throws Exception {
-		// TODO Auto-generated constructor stub
-		super();
+	public ChatFrame(String user, String guest, Socket socket, int port, int portVoice) throws Exception {
 		nameUser = user;
 		nameGuest = guest;
 		socketChat = socket;
-		this.portServer = port;
-		System.out.println("user: " + user);
-		System.out.println("Guest: " + guest);
-		System.out.println("Port: " + port);
-		System.out.println("Socket: " + socket);
+		this.port = port;
+		this.portVoice = portVoice;
+
 		chat = new ChatRoom(socketChat, nameUser, nameGuest);
 		chat.start();
+
 		EventQueue.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					initial();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
+			public void run() { initial(); }
 		});
+
+		this.setVisible(true);
 	}
 
         //TN nhận
 	public void updateChat_receive(String msg) {
 		frameChat.appendToPane(txtDisplayMessage, STR."<div class='left' style='width: 40%; background-color: #f1f0f0;'>    \{msg}<br>\{LocalDateTime.now().getHour()}:\{LocalDateTime.now().getMinute()}</div>");
 	}
-
-
-
 	//TN gửi
 	public void updateChat_send(String msg) {
 		frameChat.appendToPane(txtDisplayMessage,
                 STR."<table class='bang' style='color: white; clear:both; width: 100%;'><tr align='right'><td style='width: 59%; '></td><td style='width: 40%; background-color: #0084ff;'>\{LocalDateTime.now().getHour()}:\{LocalDateTime.now().getMinute()}<br>\{msg}</td> </tr></table>");
 	}
-
-
 	public void updateChat_notify(String msg) {
 		frameChat.appendToPane(txtDisplayMessage,
                 STR."<table class='bang' style='color: white; clear:both; width: 100%;'><tr align='right'><td style='width: 59%; '></td><td style='width: 40%; background-color: #f1c40f;'>\{msg}</td> </tr></table>");
 	}
-
 	public void updateChat_send_Symbol(String msg) {
 		frameChat.appendToPane(txtDisplayMessage, STR."<table style='width: 100%;'><tr align='right'><td style='width: 59%;'></td><td style='width: 40%;'>\{msg}</td> </tr></table>");
 	}
@@ -168,22 +149,18 @@ public class ChatFrame extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				try {
-
-					if (voiceInfo == null) {
+					if (ChatFrame.this.voiceInfo == null) {
 						JOptionPane.showMessageDialog(null,
 								"Không có thông tin peer để chạy voice!",
 								"Error", JOptionPane.ERROR_MESSAGE);
 						return;
 					}
 
-					// ⭐ Lấy IP và PORT của peer từ SESSION_ACCEPT
 					InetAddress peerAddress = voiceInfo.peerAddress;
 					int peerVoicePort = voiceInfo.peerVoicePort;
 
-					// ⭐ Tạo UDP socket cho audio
 					DatagramSocket voiceSocket = new DatagramSocket();
 
-					// ⭐ Khởi tạo 2 thread send/receive
 					VoiceSendThread sendThread =
 							new VoiceSendThread(voiceSocket, peerAddress, peerVoicePort);
 
@@ -253,7 +230,6 @@ public class ChatFrame extends JFrame {
 				try {
 					chat.sendMessage(sendMessage(msg));
 				} catch (Exception e1) {
-					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}
 				updateChat_send_Symbol(msg);
@@ -480,7 +456,8 @@ public class ChatFrame extends JFrame {
 							System.out.println("SESSION_ACCEPT received: " + msgObj);
 
 							String[] peers = msgObj.split("<PEER>");
-							voiceInfo = null;
+							ChatFrame.this.voiceInfo = null;
+
 
 							for (String p : peers) {
 								if (p.contains("<PEER_NAME>")
@@ -496,7 +473,7 @@ public class ChatFrame extends JFrame {
 
 									// CHỈ LẤY PEER KHÁC MÌNH
 //									if (!name.equals(myName)) {
-									voiceInfo = new VoiceInfo(InetAddress.getByName(ip), port, name);
+									ChatFrame.this.voiceInfo = new VoiceInfo(InetAddress.getByName(ip), port, name);
 
 									System.out.println("Voice Peer FOUND:");
 									System.out.println(" Name : " + name);
@@ -506,11 +483,11 @@ public class ChatFrame extends JFrame {
 								}
 							}
 
-							if (voiceInfo == null) {
+							if (ChatFrame.this.voiceInfo == null) {
 								System.out.println("⚠ No peer found");
 							}
 
-							break;    // <<< FIX QUAN TRỌNG NHẤT
+							continue;
 						}
 						// ============================================================================
 
@@ -736,32 +713,4 @@ public class ChatFrame extends JFrame {
 		}
 
 	}
-
-//	public void copyFileReceive(InputStream inputStr, OutputStream outputStr, String path) throws IOException {
-//		byte[] buffer = new byte[1024];
-//		int lenght;
-//		while ((lenght = inputStr.read(buffer)) > 0) {
-//			outputStr.write(buffer, 0, lenght);
-//		}
-//		inputStr.close();
-//		outputStr.close();
-//		File fileTemp = new File(path);
-//		if (fileTemp.exists()) {
-//			fileTemp.delete();
-//		}
-//	}
-//
-//	private void appendToPane(JTextPane tp, String msg) {
-//		HTMLDocument doc = (HTMLDocument) tp.getDocument();
-//		HTMLEditorKit editorKit = (HTMLEditorKit) tp.getEditorKit();
-//		try {
-//
-//			editorKit.insertHTML(doc, doc.getLength(), msg, 0, 0, null);
-//			tp.setCaretPosition(doc.getLength());
-//
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//		}
-//	}
-
 }

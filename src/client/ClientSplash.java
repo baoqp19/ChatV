@@ -117,7 +117,6 @@ public class ClientSplash extends JWindow {
     public void startSplash() {
         setVisible(true);
 
-        // Dùng Virtual Thread của Java 21 → cực mượt, hiện đại
         Thread.startVirtualThread(() -> {
             try {
                 for (int i = 0; i <= 100; i++) {

@@ -11,10 +11,12 @@ import tags.Tags;
 
 public class ClientServer {
 
-	private String username = "";
+	private String username;
 	private ServerSocket serverPeer;
 	private int port;
 	private boolean isStop = false;
+
+	private Client clientNode;
 
 	public void stopServerPeer() {
 		isStop = true;
@@ -24,11 +26,14 @@ public class ClientServer {
 		return isStop;
 	}
 
-	public ClientServer(String name) throws Exception {
-		username = name;
-		port = Client.getPort();
+	// ====== FIXED CONSTRUCTOR ======
+	public ClientServer(Client clientNode) throws Exception {
+		this.clientNode = clientNode;
+		this.username = clientNode.getUsername();
+		this.port = clientNode.getClientPort();
+
 		serverPeer = new ServerSocket(port);
-		(new WaitPeerConnect()).start();
+		new WaitPeerConnect().start();
 	}
 
 	public void exit() throws IOException {
@@ -43,27 +48,38 @@ public class ClientServer {
 
 		@Override
 		public void run() {
-			super.run();
 			while (!isStop) {
 				try {
 					connection = serverPeer.accept();
+
 					getRequest = new ObjectInputStream(connection.getInputStream());
 					String msg = (String) getRequest.readObject();
-					String name = Decode.getNameRequestChat(msg);
-					int res = MainFrame.request("Account: " + name + " want to connect with you !", true);
+					String guestName = Decode.getNameRequestChat(msg);
+
+					int res = MainFrame.request(
+							"Account: " + guestName + " want to connect with you!",
+							true
+					);
+
 					ObjectOutputStream send = new ObjectOutputStream(connection.getOutputStream());
+
 					if (res == 1) {
 						send.writeObject(Tags.CHAT_DENY_TAG);
 
 					} else if (res == 0) {
 						send.writeObject(Tags.CHAT_ACCEPT_TAG);
-						new ChatFrame(username, name, connection, port);
+
+						// mở cửa sổ chat
+						new ChatFrame(username, guestName, connection, port);
 					}
+
 					send.flush();
+
 				} catch (Exception e) {
 					break;
 				}
 			}
+
 			try {
 				serverPeer.close();
 			} catch (IOException e) {

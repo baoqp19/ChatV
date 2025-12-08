@@ -15,7 +15,6 @@ public class ServerSplashFrame extends JWindow {
     }
 
     private void initUI() {
-        // Panel nền gradient xanh VKU Server
         JPanel panel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -53,7 +52,6 @@ public class ServerSplashFrame extends JWindow {
         subtitle.setBounds(20, 105, 560, 30);
         panel.add(subtitle);
 
-        // Thanh progress – ĐẸP, KHÔNG CÓ % Ở GIỮA
         progressBar = new JProgressBar();
         progressBar.setBounds(50, 170, 500, 38);
         progressBar.setStringPainted(false);
@@ -62,7 +60,6 @@ public class ServerSplashFrame extends JWindow {
         progressBar.setBackground(new Color(255, 255, 255, 50));
         progressBar.setBorderPainted(false);
 
-        // Custom UI để bo góc + tắt hoàn toàn chữ %
         progressBar.setUI(new javax.swing.plaf.basic.BasicProgressBarUI() {
             @Override
             protected void paintDeterminate(Graphics g, JComponent c) {
@@ -86,12 +83,10 @@ public class ServerSplashFrame extends JWindow {
 
             @Override
             protected void paintString(Graphics g, int x, int y, int w, int h, int fill, Insets i) {
-                // Không vẽ gì → tắt 100% chữ % ở giữa
             }
         });
         panel.add(progressBar);
 
-        // Phần trăm ở dưới – giữ nguyên logic của bạn
         percentageLabel = new JLabel("0%", SwingConstants.CENTER);
         percentageLabel.setFont(new Font("Consolas", Font.BOLD, 30));
         percentageLabel.setForeground(Color.WHITE);
@@ -111,20 +106,18 @@ public class ServerSplashFrame extends JWindow {
         setShape(new RoundRectangle2D.Double(0, 0, 600, 350, 35, 35));
     }
 
-    // GIỮ NGUYÊN HOÀN TOÀN LOGIC CỦA BẠN
     public void startSplash() {
         try {
             for (int i = 0; i <= 100; i++) {
                 Thread.sleep(30);
                 progressBar.setValue(i);
-                percentageLabel.setText(i + "%"); // bạn thích % LOADING thì đổi lại nhé
+                percentageLabel.setText(i + "%");
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
 
-    // MAIN GIỮ NGUYÊN 100%
     public static void main(String[] args) {
         ServerSplashFrame splash = new ServerSplashFrame();
         splash.setVisible(true);

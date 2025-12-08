@@ -125,18 +125,32 @@ public class ServerFrame extends JFrame {
 		statusPanel.add(lblUserOnline);
 
 		// Nút điều khiển
-		JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 30, 20));
+// Panel chứa 2 nút – trong suốt + căn giữa hoàn hảo
+		JPanel buttonPanel = new JPanel();
+		buttonPanel.setLayout(new GridBagLayout());  // thần thánh cho việc căn đều
 		buttonPanel.setBackground(Color.WHITE);
+		buttonPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 30, 0)); // khoảng cách trên/dưới đẹp
 
-		btnStartServer = new JButton("START SERVER");
-		styleButton(btnStartServer, new Color(76, 175, 80), 20);
+		GridBagConstraints gbc = new GridBagConstraints();
+		gbc.insets = new Insets(0, 15, 0, 15);  // khoảng cách giữa 2 nút
+		gbc.fill = GridBagConstraints.HORIZONTAL;
 
-		btnStopServer = new JButton("STOP SERVER");
-		styleButton(btnStopServer, new Color(211, 47, 47), 20);
+		btnStartServer = new JButton("START");
+		styleButton(btnStartServer, new Color(0, 190, 100), 20);  // xanh Spotify siêu đẹp
+		gbc.gridx = 0;
+		gbc.weightx = 1.0;  // chiếm đều không gian
+		buttonPanel.add(btnStartServer, gbc);
+
+		btnStopServer = new JButton("STOP");
+		styleButton(btnStopServer, new Color(220, 50, 60), 20);   // đỏ Apple sang trọng
+		btnStopServer.setEnabled(false);
+		gbc.gridx = 1;
+		gbc.weightx = 1.0;
+		buttonPanel.add(btnStopServer, gbc);
 		btnStopServer.setEnabled(false);
 
-		buttonPanel.add(btnStartServer);
-		buttonPanel.add(btnStopServer);
+//		buttonPanel.add(btnStartServer);
+//		buttonPanel.add(btnStopServer);
 
 		// Thêm vào left panel
 		leftPanel.add(networkPanel);
@@ -176,7 +190,6 @@ public class ServerFrame extends JFrame {
 		footer.setForeground(new Color(100, 100, 100));
 		add(footer, BorderLayout.SOUTH);
 
-		// === GIỮ NGUYÊN 100% LOGIC CỦA BẠN ===
 		btnStartServer.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -215,6 +228,7 @@ public class ServerFrame extends JFrame {
 		});
 	}
 
+
 	private JLabel createLabel(String text) {
 		JLabel lbl = new JLabel(text);
 		lbl.setFont(new Font("Segoe UI", Font.BOLD, 18));
@@ -223,13 +237,52 @@ public class ServerFrame extends JFrame {
 	}
 
 	private void styleButton(JButton btn, Color bg, int fontSize) {
+		// Màu chính + màu hiệu ứng
+		Color hoverColor   = bg.brighter();                 // sáng hơn khi hover
+		Color pressedColor = bg.darker();                   // tối hơn khi nhấn
+
 		btn.setFont(new Font("Segoe UI", Font.BOLD, fontSize));
-		btn.setBackground(bg);
 		btn.setForeground(Color.WHITE);
+		btn.setBackground(bg);
 		btn.setFocusPainted(false);
 		btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		btn.setPreferredSize(new Dimension(180, 58));
-		btn.setBorder(BorderFactory.createEmptyBorder());
+
+		// Kích thước nhỏ gọn đẹp (tùy ý chỉnh)
+		btn.setPreferredSize(new Dimension(160, 48));     // nhỏ hơn, tinh tế hơn 180x58
+
+		// Bo tròn 16px – chuẩn app hiện đại (Zalo, Telegram, Discord đều dùng ~14-18px)
+		btn.setBorder(BorderFactory.createEmptyBorder(12, 24, 12, 24));
+
+		// Bật opaque để background hiển thị đúng
+		btn.setOpaque(false);
+		btn.setContentAreaFilled(false);
+		btn.setBorderPainted(false);
+
+		// Vẽ lại button với bo tròn + hiệu ứng (đẹp hơn 1000 lần cách cũ)
+		btn.setUI(new javax.swing.plaf.basic.BasicButtonUI() {
+			@Override
+			public void paint(Graphics g, JComponent c) {
+				Graphics2D g2 = (Graphics2D) g.create();
+				g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+				int w = c.getWidth();
+				int h = c.getHeight();
+				int arc = 16; // độ bo tròn
+
+				// Background theo trạng thái
+				if (btn.getModel().isPressed()) {
+					g2.setColor(pressedColor);
+				} else if (btn.getModel().isRollover()) {
+					g2.setColor(hoverColor);
+				} else {
+					g2.setColor(bg);
+				}
+				g2.fillRoundRect(0, 0, w, h, arc, arc);
+
+				g2.dispose();
+				super.paint(g, c);
+			}
+		});
 	}
 
 	// GIỮ NGUYÊN 100% CÁC HÀM CỦA BẠN
