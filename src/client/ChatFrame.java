@@ -256,6 +256,7 @@ public class ChatFrame extends JFrame {
 				updateChat_send_Symbol(msg);
 			}
 		});
+
 		btnNewButton_4.setIcon(new ImageIcon(ChatFrame.class.getResource("/image/love32.png")));
 		btnNewButton_4.setBounds(144, 22, 44, 41);
 		btnNewButton_4.setBorder(new EmptyBorder(0, 0, 0, 0));

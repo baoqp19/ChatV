@@ -10,6 +10,7 @@ import java.util.regex.Pattern;
 import javax.swing.*;
 import javax.swing.border.*;
 
+import database.UserDAO;
 import tags.Encode;
 import tags.Tags;
 
@@ -190,54 +191,53 @@ public class StartClientFrame extends JFrame implements ActionListener {
 		if (e.getSource() == btnConnectServer) {
 			userName = txtUserName.getText().trim();
 			IP = txtIP.getText().trim();
-
 			if (userName.isEmpty()) {
 				JOptionPane.showMessageDialog(this, "Vui lòng nhập tên!", "Lỗi", JOptionPane.WARNING_MESSAGE);
 				return;
 			}
-
 			if (!checkName.matcher(userName).matches()) {
 				JOptionPane.showMessageDialog(this, NAME_FAILED, "Tên không hợp lệ", JOptionPane.ERROR_MESSAGE);
 				return;
 			}
-
 			if (IP.isEmpty()) {
 				JOptionPane.showMessageDialog(this, "IP Server không được để trống!", "Lỗi", JOptionPane.ERROR_MESSAGE);
 				return;
 			}
+			if(UserDAO.isUserExist(userName)){
+				try {
+					Random rd = new Random();
+					int portPeer = 10000 + rd.nextInt(1000);
+					int portServer = Integer.parseInt(txtPort.getText().trim());
 
-			try {
-				Random rd = new Random();
-				int portPeer = 10000 + rd.nextInt(1000);
-				int portServer = Integer.parseInt(txtPort.getText().trim());
+					Socket socketClient = new Socket(IP, portServer);
+					socketClient.setSoTimeout(5000); // timeout 5s
 
-				Socket socketClient = new Socket(IP, portServer);
-				socketClient.setSoTimeout(5000); // timeout 5s
+					String msg = Encode.getCreateAccount(userName, String.valueOf(portPeer));
+					ObjectOutputStream oos = new ObjectOutputStream(socketClient.getOutputStream());
+					oos.writeObject(msg);
+					oos.flush();
 
-				String msg = Encode.getCreateAccount(userName, String.valueOf(portPeer));
-				ObjectOutputStream oos = new ObjectOutputStream(socketClient.getOutputStream());
-				oos.writeObject(msg);
-				oos.flush();
+					ObjectInputStream ois = new ObjectInputStream(socketClient.getInputStream());
+					msg = (String) ois.readObject();
 
-				ObjectInputStream ois = new ObjectInputStream(socketClient.getInputStream());
-				msg = (String) ois.readObject();
+					socketClient.close();
 
-				socketClient.close();
+					if (msg.equals(Tags.SESSION_DENY_TAG)) {
+						JOptionPane.showMessageDialog(this, NAME_EXIST, "Đăng nhập thất bại", JOptionPane.ERROR_MESSAGE);
+						return;
+					}
+					// Thành công → mở MainFrame
+					new MainFrame(IP, portPeer, userName, msg, portServer);
+					dispose();
 
-				if (msg.equals(Tags.SESSION_DENY_TAG)) {
-					JOptionPane.showMessageDialog(this, NAME_EXIST, "Đăng nhập thất bại", JOptionPane.ERROR_MESSAGE);
-					return;
+				} catch (ConnectException | SocketTimeoutException ex) {
+					JOptionPane.showMessageDialog(this, SERVER_NOT_START, "Không kết nối được", JOptionPane.ERROR_MESSAGE);
+				} catch (Exception ex) {
+					JOptionPane.showMessageDialog(this, "Lỗi không xác định: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+					ex.printStackTrace();
 				}
-
-				// Thành công → mở MainFrame
-				new MainFrame(IP, portPeer, userName, msg, portServer);
-				dispose();
-
-			} catch (ConnectException | SocketTimeoutException ex) {
-				JOptionPane.showMessageDialog(this, SERVER_NOT_START, "Không kết nối được", JOptionPane.ERROR_MESSAGE);
-			} catch (Exception ex) {
-				JOptionPane.showMessageDialog(this, "Lỗi không xác định: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
-				ex.printStackTrace();
+			}else{
+				JOptionPane.showMessageDialog(this, "Tên đăng nhập không đúng!", "Lỗi", JOptionPane.WARNING_MESSAGE);
 			}
 		}
 	}
