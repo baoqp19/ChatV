@@ -24,7 +24,7 @@ public class StartClientFrame extends JFrame implements ActionListener {
 	private JTextField txtIP, txtPort, txtUserName;
 	private JButton btnConnectServer;
 
-	String IP, userName;
+	String IP, port, userName;
 	String file = System.getProperty("user.dir") + "\\Server.txt";
 	List<String> listServer = new ArrayList<>();
 
@@ -191,6 +191,8 @@ public class StartClientFrame extends JFrame implements ActionListener {
 		if (e.getSource() == btnConnectServer) {
 			userName = txtUserName.getText().trim();
 			IP = txtIP.getText().trim();
+			port = txtPort.getText().trim();
+
 			if (userName.isEmpty()) {
 				JOptionPane.showMessageDialog(this, "Vui lòng nhập tên!", "Lỗi", JOptionPane.WARNING_MESSAGE);
 				return;
@@ -205,9 +207,11 @@ public class StartClientFrame extends JFrame implements ActionListener {
 			}
 			if(UserDAO.isUserExist(userName)){
 				try {
+
 					Random rd = new Random();
 					int portPeer = 10000 + rd.nextInt(1000);
 					int portServer = Integer.parseInt(txtPort.getText().trim());
+					UserDAO.updateIpPort(IP, portPeer, "online", userName);
 
 					Socket socketClient = new Socket(IP, portServer);
 					socketClient.setSoTimeout(5000); // timeout 5s
@@ -236,6 +240,7 @@ public class StartClientFrame extends JFrame implements ActionListener {
 					JOptionPane.showMessageDialog(this, "Lỗi không xác định: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
 					ex.printStackTrace();
 				}
+
 			}else{
 				JOptionPane.showMessageDialog(this, "Tên đăng nhập không đúng!", "Lỗi", JOptionPane.WARNING_MESSAGE);
 			}

@@ -19,6 +19,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.Random;
 
 import javax.swing.*;
@@ -81,21 +82,65 @@ public class ChatFrame extends JFrame {
 		this.setVisible(true);
 	}
 
-        //TN nhận
+	// TN nhận
 	public void updateChat_receive(String msg) {
-		frameChat.appendToPane(txtDisplayMessage, STR."<div class='left' style='width: 40%; background-color: #f1f0f0;'>    \{msg}<br>\{LocalDateTime.now().getHour()}:\{LocalDateTime.now().getMinute()}</div>");
+		String html =
+				"<div class='left' style='width: 40%; background-color: #f1f0f0; color: black;'>"
+						+ msg + "<br>"
+						+ LocalDateTime.now().getHour() + ":"
+						+ LocalDateTime.now().getMinute()
+						+ "</div>";
+
+		frameChat.appendToPane(txtDisplayMessage, html);
 	}
-	//TN gửi
+
+	// TN gửi
 	public void updateChat_send(String msg) {
-		frameChat.appendToPane(txtDisplayMessage,
-                STR."<table class='bang' style='color: white; clear:both; width: 100%;'><tr align='right'><td style='width: 59%; '></td><td style='width: 40%; background-color: #0084ff;'>\{LocalDateTime.now().getHour()}:\{LocalDateTime.now().getMinute()}<br>\{msg}</td> </tr></table>");
+		String html =
+				"<table class='bang' style='color: white; clear:both; width: 100%;'>" +
+						"<tr align='right'>" +
+						"<td style='width: 59%;'></td>" +
+						"<td style='width: 40%; background-color: #0084ff;'>" +
+						LocalDateTime.now().getHour() + ":" +
+						LocalDateTime.now().getMinute() + "<br>" +
+						msg +
+						"</td>" +
+						"</tr>" +
+						"</table>";
+
+		frameChat.appendToPane(txtDisplayMessage, html);
 	}
+
+
+	// TN thông báo
 	public void updateChat_notify(String msg) {
-		frameChat.appendToPane(txtDisplayMessage,
-                STR."<table class='bang' style='color: white; clear:both; width: 100%;'><tr align='right'><td style='width: 59%; '></td><td style='width: 40%; background-color: #f1c40f;'>\{msg}</td> </tr></table>");
+		String html =
+				"<table class='bang' style='color: white; clear:both; width: 100%;'>" +
+						"<tr align='right'>" +
+						"<td style='width: 59%;'></td>" +
+						"<td style='width: 40%; background-color: #f1c40f;'>" +
+						msg +
+						"</td>" +
+						"</tr>" +
+						"</table>";
+
+		frameChat.appendToPane(txtDisplayMessage, html);
 	}
+
+
+	// TN gửi biểu tượng / emoji
 	public void updateChat_send_Symbol(String msg) {
-		frameChat.appendToPane(txtDisplayMessage, STR."<table style='width: 100%;'><tr align='right'><td style='width: 59%;'></td><td style='width: 40%;'>\{msg}</td> </tr></table>");
+		String html =
+				"<table style='width: 100%;'>" +
+						"<tr align='right'>" +
+						"<td style='width: 59%;'></td>" +
+						"<td style='width: 40%;'>" +
+						msg +
+						"</td>" +
+						"</tr>" +
+						"</table>";
+
+		frameChat.appendToPane(txtDisplayMessage, html);
 	}
 
 	/**
@@ -236,7 +281,7 @@ public class ChatFrame extends JFrame {
 			}
 		});
 
-		btnNewButton_2.setIcon(new ImageIcon(ChatFrame.class.getResource("/image/like32.png")));
+		btnNewButton_2.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/like32.png"))));
 		btnNewButton_2.setBounds(31, 22, 44, 41);
 		btnNewButton_2.setBorder(new EmptyBorder(0, 0, 0, 0));
 		btnNewButton_2.setContentAreaFilled(false);
@@ -257,7 +302,7 @@ public class ChatFrame extends JFrame {
 			}
 		});
 
-		btnNewButton_4.setIcon(new ImageIcon(ChatFrame.class.getResource("/image/love32.png")));
+		btnNewButton_4.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/love32.png"))));
 		btnNewButton_4.setBounds(144, 22, 44, 41);
 		btnNewButton_4.setBorder(new EmptyBorder(0, 0, 0, 0));
 		btnNewButton_4.setContentAreaFilled(false);
@@ -277,7 +322,7 @@ public class ChatFrame extends JFrame {
 				updateChat_send_Symbol(msg);
 			}
 		});
-		btnNewButton_5.setIcon(new ImageIcon(ChatFrame.class.getResource("/image/smile32.png")));
+		btnNewButton_5.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/smile32.png"))));
 		btnNewButton_5.setBounds(265, 22, 44, 41);
 		btnNewButton_5.setBorder(new EmptyBorder(0, 0, 0, 0));
 		btnNewButton_5.setContentAreaFilled(false);
@@ -297,7 +342,7 @@ public class ChatFrame extends JFrame {
 				updateChat_send_Symbol(msg);
 			}
 		});
-		btnNewButton_7.setIcon(new ImageIcon(ChatFrame.class.getResource("/image/sad32.png")));
+		btnNewButton_7.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/sad32.png"))));
 		btnNewButton_7.setBounds(378, 22, 44, 41);
 		btnNewButton_7.setBorder(new EmptyBorder(0, 0, 0, 0));
 		btnNewButton_7.setContentAreaFilled(false);
@@ -317,7 +362,7 @@ public class ChatFrame extends JFrame {
 				updateChat_send_Symbol(msg);
 			}
 		});
-		btnNewButton_8.setIcon(new ImageIcon(ChatFrame.class.getResource("/image/img2.png")));
+		btnNewButton_8.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/img2.png"))));
 		btnNewButton_8.setBounds(495, 22, 44, 41);
 		btnNewButton_8.setBorder(new EmptyBorder(0, 0, 0, 0));
 		btnNewButton_8.setContentAreaFilled(false);
@@ -336,7 +381,7 @@ public class ChatFrame extends JFrame {
 		btnSend = new JButton();
 		btnSend.setBorder(new EmptyBorder(0, 0, 0, 0));
 		btnSend.setContentAreaFilled(false);
-		ImageIcon originalIcon = new ImageIcon(ChatFrame.class.getResource("/image/send32.png"));
+		ImageIcon originalIcon = new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/send32.png")));
 		Image scaledImage = originalIcon.getImage().getScaledInstance(36, 36, Image.SCALE_SMOOTH);
 		btnSend.setIcon(new ImageIcon(scaledImage));
 		btnSend.addActionListener(new ActionListener() {
@@ -392,7 +437,7 @@ public class ChatFrame extends JFrame {
 		});
 		btnSendFile.setBorder(new EmptyBorder(0, 0, 0, 0));
 		btnSendFile.setContentAreaFilled(false);
-		btnSendFile.setIcon(new ImageIcon(ChatFrame.class.getResource("/image/file32.png")));
+		btnSendFile.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/file32.png"))));
 		btnSendFile.setBounds(440, 10, 64, 53);
 		panel_3.add(btnSendFile);
 

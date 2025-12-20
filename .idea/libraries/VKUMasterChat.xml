@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="VKUMasterChat">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/dist/VKUMasterChat.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -125,7 +125,7 @@ public class ServerFrame extends JFrame {
 		statusPanel.add(lblUserOnline);
 
 		// Nút điều khiển
-// Panel chứa 2 nút – trong suốt + căn giữa hoàn hảo
+        // Panel chứa 2 nút – trong suốt + căn giữa hoàn hảo
 		JPanel buttonPanel = new JPanel();
 		buttonPanel.setLayout(new GridBagLayout());  // thần thánh cho việc căn đều
 		buttonPanel.setBackground(Color.WHITE);

@@ -21,4 +21,42 @@ public class UserDAO {
         }
         return false;
     }
+
+    // Update IP và Port khi user đăng nhập
+    public static boolean updateIpPort(String ip, int port, String status, String username) {
+        String sql = "UPDATE users SET ip = ?, port = ?, status = ? WHERE username = ?";
+        try (Connection con = DBUtil.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, ip);
+            ps.setInt(2, port);
+            ps.setString(3, status);
+            ps.setString(4, username);
+
+            return ps.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public static boolean updateStatus(String status, String username) {
+        String sql = "UPDATE users SET status = ? WHERE username = ?";
+
+        try (Connection con = DBUtil.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, status);
+            ps.setString(2, username);
+
+            return ps.executeUpdate() > 0; // true nếu update thành công
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
 }
+

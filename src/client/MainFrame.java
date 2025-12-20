@@ -5,11 +5,12 @@ import java.awt.event.*;
 import java.io.*;
 import java.net.Inet4Address;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import javax.swing.*;
 import javax.swing.border.*;
 
 import data.Peer;
+import database.DBUtil;
+import database.UserDAO;
 import tags.Tags;
 
 public class MainFrame extends JFrame implements WindowListener {
@@ -264,7 +265,11 @@ public class MainFrame extends JFrame implements WindowListener {
 
 	@Override
 	public void windowClosing(WindowEvent e) {
-		try { clientNode.exit(); } catch (Exception ex) { ex.printStackTrace(); }
+		try {
+			UserDAO.updateStatus("offline",nameUser);
+			clientNode.exit();
+		} catch (Exception ex) {
+			ex.printStackTrace(); }
 	}
 
 	@Override public void windowOpened(WindowEvent e) {}
