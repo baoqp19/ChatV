@@ -178,7 +178,7 @@ public class ChatFrame extends JFrame {
 		panel.setLayout(null);
 
 		JLabel lblNewLabel = new JLabel();
-		lblNewLabel.setIcon(new ImageIcon(ChatFrame.class.getResource("/image/VKU64.png")));
+		lblNewLabel.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/VKU64.png"))));
 		lblNewLabel.setBounds(20, 0, 66, 67);
 		panel.add(lblNewLabel);
 
@@ -224,7 +224,7 @@ public class ChatFrame extends JFrame {
 			}
 		});
 
-		btnPhone.setIcon(new ImageIcon(ChatFrame.class.getResource("/image/phone48.png")));
+		btnPhone.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/phone48.png"))));
 		btnPhone.setBounds(403, 16, 32, 32);
 		btnPhone.setBorder(new EmptyBorder(0, 0, 0, 0));
 		btnPhone.setContentAreaFilled(false);
@@ -240,7 +240,7 @@ public class ChatFrame extends JFrame {
 		});
 
 		btnVideo.setToolTipText("video call");
-		btnVideo.setIcon(new ImageIcon(ChatFrame.class.getResource("/image/videocall48.png")));
+		btnVideo.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/videocall48.png"))));
 		btnVideo.setBounds(474, 16, 32, 32);
 		btnVideo.setBorder(new EmptyBorder(0, 0, 0, 0));
 		btnVideo.setContentAreaFilled(false);
@@ -425,6 +425,7 @@ public class ChatFrame extends JFrame {
 					} catch (Exception ex) {
 						ex.printStackTrace();
 					}
+
 					System.out.println("nameFile: " + nameFile);
 					try {
 						chat.sendFile(file);
@@ -435,6 +436,7 @@ public class ChatFrame extends JFrame {
 				}
 			}
 		});
+
 		btnSendFile.setBorder(new EmptyBorder(0, 0, 0, 0));
 		btnSendFile.setContentAreaFilled(false);
 		btnSendFile.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/file32.png"))));
@@ -536,7 +538,6 @@ public class ChatFrame extends JFrame {
 							continue;
 						}
 						// ============================================================================
-
 
 						// ================== CHAT CLOSE ===================
 						if (msgObj.equals(Tags.CHAT_CLOSE_TAG)) {

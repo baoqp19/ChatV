@@ -20,6 +20,10 @@ public class Encode {
 				+ Tags.SESSION_KEEP_ALIVE_CLOSE_TAG;
 	}
 
+	public static String getRegister(String username, String password) {
+		return Tags.REGISTER_TAG + "|" + username + "|" + password;
+	}
+
 	public static String sendMessage(String message) {
 //		System.out.println("(encode)Dau vao message: " + message);
 		Matcher findMessage = checkMessage.matcher(message);

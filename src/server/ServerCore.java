@@ -3,9 +3,12 @@ package server;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.ArrayList;
 
 import data.Peer;
+import database.DBUtil;
 import tags.Decode;
 import tags.Tags;
 
@@ -85,6 +88,22 @@ public class ServerCore {
 	}
 
 	private void saveNewPeer(String user, String ip, int port) throws Exception {
+
+		Connection conn = DBUtil.getConnection();
+		String sql =
+				"INSERT INTO peers(username, ip, port, status) " +
+						"VALUES (?, ?, ?, 'ONLINE') " +
+						"ON DUPLICATE KEY UPDATE ip=?, port=?, status='ONLINE'";
+
+		PreparedStatement ps = conn.prepareStatement(sql);
+		ps.setString(1, user);
+		ps.setString(2, ip);
+		ps.setInt(3, port);
+		ps.setString(4, ip);
+		ps.setInt(5, port);
+
+		ps.executeUpdate();
+
 		Peer newPeer = new Peer();
 		if (dataPeer.size() == 0)
 			dataPeer = new ArrayList<Peer>();

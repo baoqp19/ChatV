@@ -14,7 +14,9 @@ public class ClientSplash extends JWindow {
     }
 
     private void initUI() {
+
         // Buộc dùng System LookAndFeel (Windows/macOS) → không bị Nimbus vẽ % thừa
+
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception ignored) {}
@@ -39,6 +41,7 @@ public class ClientSplash extends JWindow {
                 g2d.dispose();
             }
         };
+
         panel.setLayout(null);
 
         // Tiêu đề

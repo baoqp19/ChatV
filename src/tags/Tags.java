@@ -70,6 +70,11 @@ public class Tags {
 	public static final String VOICE_ACCEPT_CLOSE = "</voice_accept>";
 
 	public static final String VOICE_REJECT_TAG = "<voice_reject/>";
+	public static final String REGISTER_TAG = "REGISTER";
+	public static final String REGISTER_OK = "REGISTER_OK";
+	public static final String REGISTER_DENY = "REGISTER_DENY";
+
+	public static final String LOGIN_TAG = "LOGIN";
 
 
 	// ------------------

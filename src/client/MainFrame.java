@@ -266,7 +266,6 @@ public class MainFrame extends JFrame implements WindowListener {
 	@Override
 	public void windowClosing(WindowEvent e) {
 		try {
-			UserDAO.updateStatus("offline",nameUser);
 			clientNode.exit();
 		} catch (Exception ex) {
 			ex.printStackTrace(); }

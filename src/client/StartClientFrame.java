@@ -44,75 +44,94 @@ public class StartClientFrame extends JFrame implements ActionListener {
 		initComponents();
 		autoDetectLocalIP();
 	}
-
 	private void initComponents() {
 		setTitle("VKU Chat Client - Kết nối Server");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setSize(720, 560);
+		setSize(720, 620); // Tăng chiều cao một chút để thoáng hơn
 		setLocationRelativeTo(null);
 		setResizable(false);
 
-		// Background chính
-		JPanel background = new JPanel(new BorderLayout());
-		background.setBackground(new Color(245, 250, 255));
-		background.setBorder(new EmptyBorder(30, 40, 40, 40));
-		setContentPane(background);
+		// Main container
+		JPanel mainPanel = new JPanel(new BorderLayout());
+		mainPanel.setBackground(new Color(240, 248, 255));
+		mainPanel.setBorder(new EmptyBorder(40, 50, 50, 50));
+		setContentPane(mainPanel);
 
-		// === TIÊU ĐỀ ===
+		// === HEADER ===
+		JPanel headerPanel = new JPanel(new BorderLayout());
+		headerPanel.setOpaque(false);
+
 		JLabel lblTitle = new JLabel("VKU CHAT", SwingConstants.CENTER);
-		lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 48));
+		lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 52));
 		lblTitle.setForeground(new Color(0, 102, 204));
-		lblTitle.setBorder(new EmptyBorder(0, 0, 20, 0));
-		background.add(lblTitle, BorderLayout.NORTH);
 
 		JLabel lblSubTitle = new JLabel("Đăng nhập để bắt đầu trò chuyện", SwingConstants.CENTER);
 		lblSubTitle.setFont(new Font("Segoe UI", Font.PLAIN, 18));
 		lblSubTitle.setForeground(new Color(100, 100, 100));
-		background.add(lblSubTitle, BorderLayout.NORTH);
+		lblSubTitle.setBorder(new EmptyBorder(10, 0, 30, 0));
 
-		// === FORM CHÍNH ===
-		JPanel formPanel = new JPanel(new GridBagLayout());
-		formPanel.setBackground(Color.WHITE);
-		formPanel.setBorder(BorderFactory.createCompoundBorder(
-				new LineBorder(new Color(180, 210, 255), 2, true),
-				new EmptyBorder(40, 60, 40, 60)
+		headerPanel.add(lblTitle, BorderLayout.CENTER);
+		headerPanel.add(lblSubTitle, BorderLayout.SOUTH);
+
+		mainPanel.add(headerPanel, BorderLayout.NORTH);
+
+		// === FORM CARD ===
+		JPanel cardPanel = new JPanel(new GridBagLayout());
+		cardPanel.setBackground(Color.WHITE);
+		cardPanel.setPreferredSize(new Dimension(520, 360));
+		cardPanel.setMaximumSize(new Dimension(520, 360));
+		// Bo góc + bóng nhẹ (modern card style)
+		cardPanel.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createLineBorder(new Color(200, 220, 255), 1),
+				BorderFactory.createEmptyBorder(40, 50, 40, 50)
 		));
-		formPanel.setPreferredSize(new Dimension(500, 320));
+		// Thêm hiệu ứng bóng (tùy chọn, dùng Rounded border + shadow)
+		cardPanel.setBorder(BorderFactory.createCompoundBorder(
+				new RoundedBorder(new Color(180, 210, 255), 2, 20), // bo góc 20px
+				new EmptyBorder(40, 50, 40, 50)
+		));
 
 		GridBagConstraints gbc = new GridBagConstraints();
-		gbc.insets = new Insets(15, 10, 15, 10);
+		gbc.gridwidth = GridBagConstraints.REMAINDER;
 		gbc.fill = GridBagConstraints.HORIZONTAL;
+		gbc.insets = new Insets(12, 0, 12, 0);
+		gbc.weightx = 1.0;
 
 		// Server IP
-		addRow(formPanel, gbc, 0, "Server IP:", txtIP = createStyledTextField("Đang dò IP..."));
+		addLabeledField(cardPanel, gbc, "Server IP:", txtIP = createStyledTextField("127.0.0.1"));
 
 		// Server Port
-		addRow(formPanel, gbc, 1, "Server Port:", txtPort = createStyledTextField("3939"));
+		addLabeledField(cardPanel, gbc, "Server Port:", txtPort = createStyledTextField("3939"));
 
 		// Username
-		addRow(formPanel, gbc, 2, "Tên của bạn:", txtUserName = createStyledTextField(""));
+		addLabeledField(cardPanel, gbc, "Tên của bạn:", txtUserName = createStyledTextField(""));
 
-		background.add(formPanel, BorderLayout.CENTER);
+		mainPanel.add(cardPanel, BorderLayout.CENTER);
 
-		// === NÚT KẾT NỐI ===
-		JPanel bottomPanel = new JPanel(new FlowLayout());
-		bottomPanel.setBackground(new Color(245, 250, 255));
+		// === BOTTOM: BUTTONS + HINT ===
+		JPanel bottomPanel = new JPanel(new BorderLayout());
+		bottomPanel.setOpaque(false);
+		bottomPanel.setBorder(new EmptyBorder(30, 0, 0, 0));
 
-		btnConnectServer = new JButton("KẾT NỐI SERVER");
+		// Button group
+		JPanel buttonGroup = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
+		buttonGroup.setOpaque(false);
+
+		btnConnectServer = new JButton("ĐĂNG NHẬP");
 		btnConnectServer.setFont(new Font("Segoe UI", Font.BOLD, 20));
-		btnConnectServer.setPreferredSize(new Dimension(380, 62));
+		btnConnectServer.setPreferredSize(new Dimension(320, 62));
 		btnConnectServer.setBackground(new Color(0, 122, 255));
 		btnConnectServer.setForeground(Color.WHITE);
 		btnConnectServer.setFocusPainted(false);
 		btnConnectServer.setBorderPainted(false);
 		btnConnectServer.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		btnConnectServer.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+		btnConnectServer.setBorder(new EmptyBorder(0, 30, 0, 30));
 
 		// Hover effect
 		btnConnectServer.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseEntered(MouseEvent e) {
-				btnConnectServer.setBackground(new Color(0, 100, 220));
+				btnConnectServer.setBackground(new Color(0, 105, 220));
 			}
 			@Override
 			public void mouseExited(MouseEvent e) {
@@ -120,44 +139,109 @@ public class StartClientFrame extends JFrame implements ActionListener {
 			}
 		});
 
+		JButton btnRegister = new JButton("ĐĂNG KÝ");
+		btnRegister.setFont(new Font("Segoe UI", Font.BOLD, 18));
+		btnRegister.setPreferredSize(new Dimension(160, 62));
+		btnRegister.setBackground(new Color(245, 245, 245));
+		btnRegister.setForeground(new Color(50, 50, 50));
+		btnRegister.setFocusPainted(false);
+		btnRegister.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		btnRegister.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200), 1));
+
+		btnRegister.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseEntered(MouseEvent e) {
+				btnRegister.setBackground(new Color(230, 230, 230));
+			}
+			@Override
+			public void mouseExited(MouseEvent e) {
+				btnRegister.setBackground(new Color(245, 245, 245));
+			}
+		});
+
+		btnRegister.addActionListener(e -> {
+			new RegisterFrame().setVisible(true);
+			dispose();
+		});
+
 		btnConnectServer.addActionListener(this);
-		bottomPanel.add(btnConnectServer);
 
-		// Hint nhỏ
-		JLabel lblHint = new JLabel("<html><center>Đảm bảo Server đang chạy trên IP và Port đã nhập<br>Mặc định: 127.0.0.1 - Port 3939</center></html>");
+		buttonGroup.add(btnConnectServer);
+		buttonGroup.add(btnRegister);
+
+		// Hint
+		JLabel lblHint = new JLabel(
+				"<html><div style='text-align: center; color: #888888; font-style: italic;'>"
+						+ "Mặc định: 127.0.0.1 - Port 3939<br>"
+						+ "Đảm bảo Server đang chạy trước khi kết nối"
+						+ "</div></html>"
+		);
 		lblHint.setFont(new Font("Segoe UI", Font.ITALIC, 13));
-		lblHint.setForeground(new Color(120, 120, 120));
-		lblHint.setBorder(new EmptyBorder(20, 0, 0, 0));
+		lblHint.setHorizontalAlignment(SwingConstants.CENTER);
+		lblHint.setBorder(new EmptyBorder(25, 0, 0, 0));
 
-		JPanel southPanel = new JPanel(new BorderLayout());
-		southPanel.setBackground(new Color(245, 250, 255));
-		southPanel.add(bottomPanel, BorderLayout.CENTER);
-		southPanel.add(lblHint, BorderLayout.SOUTH);
+		bottomPanel.add(buttonGroup, BorderLayout.CENTER);
+		bottomPanel.add(lblHint, BorderLayout.SOUTH);
 
-		background.add(southPanel, BorderLayout.SOUTH);
+		mainPanel.add(bottomPanel, BorderLayout.SOUTH);
 	}
 
-	private JTextField createStyledTextField(String placeholder) {
-		JTextField field = new JTextField(placeholder);
-		field.setFont(new Font("Segoe UI", Font.PLAIN, 17));
-		field.setForeground(new Color(50, 50, 50));
+	// Helper method để thêm label + textfield đẹp
+	private void addLabeledField(JPanel panel, GridBagConstraints gbc, String labelText, JTextField textField) {
+		JLabel label = new JLabel(labelText);
+		label.setFont(new Font("Segoe UI", Font.BOLD, 15));
+		label.setForeground(new Color(60, 60, 60));
+
+		JPanel row = new JPanel(new BorderLayout(0, 8));
+		row.setOpaque(false);
+		row.add(label, BorderLayout.NORTH);
+		row.add(textField, BorderLayout.CENTER);
+
+		panel.add(row, gbc);
+	}
+
+	// Helper để tạo textfield đẹp (bạn có thể tùy chỉnh thêm)
+	private JTextField createStyledTextField(String text) {
+		JTextField field = new JTextField(text);
+		field.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+		field.setPreferredSize(new Dimension(300, 48));
 		field.setBorder(BorderFactory.createCompoundBorder(
-				new LineBorder(new Color(200, 210, 230), 2, true),
-				new EmptyBorder(10, 15, 10, 15)
+				BorderFactory.createLineBorder(new Color(180, 200, 230), 1),
+				BorderFactory.createEmptyBorder(0, 15, 0, 15)
 		));
-		field.setPreferredSize(new Dimension(300, 52));
 		return field;
 	}
 
-	private void addRow(JPanel panel, GridBagConstraints gbc, int row, String labelText, JTextField field) {
-		gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.3; gbc.anchor = GridBagConstraints.EAST;
-		JLabel label = new JLabel(labelText);
-		label.setFont(new Font("Segoe UI", Font.BOLD, 16));
-		label.setForeground(new Color(40, 40, 40));
-		panel.add(label, gbc);
 
-		gbc.gridx = 1; gbc.weightx = 0.7; gbc.anchor = GridBagConstraints.WEST;
-		panel.add(field, gbc);
+	// Custom Rounded Border class (thêm vào class của bạn)
+	static class RoundedBorder implements Border {
+		private Color color;
+		private int thickness;
+		private int radii;
+
+		public RoundedBorder(Color color, int thickness, int radii) {
+			this.color = color;
+			this.thickness = thickness;
+			this.radii = radii;
+		}
+
+		public Insets getBorderInsets(Component c) {
+			return new Insets(this.radii, this.radii, this.radii, this.radii);
+		}
+
+		public boolean isBorderOpaque() {
+			return true;
+		}
+
+		public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+			Graphics2D g2 = (Graphics2D) g.create();
+			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+			g2.setColor(color);
+			g2.setStroke(new BasicStroke(thickness));
+			g2.drawRoundRect(x + thickness/2, y + thickness/2,
+					width - thickness, height - thickness, radii, radii);
+			g2.dispose();
+		}
 	}
 
 	// Tự động dò IP local (không block UI)
@@ -188,6 +272,7 @@ public class StartClientFrame extends JFrame implements ActionListener {
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
+
 		if (e.getSource() == btnConnectServer) {
 			userName = txtUserName.getText().trim();
 			IP = txtIP.getText().trim();
@@ -205,13 +290,21 @@ public class StartClientFrame extends JFrame implements ActionListener {
 				JOptionPane.showMessageDialog(this, "IP Server không được để trống!", "Lỗi", JOptionPane.ERROR_MESSAGE);
 				return;
 			}
-			if(UserDAO.isUserExist(userName)){
-				try {
 
+			if (!UserDAO.isUserExist(userName)) {
+				JOptionPane.showMessageDialog(
+						this,
+						"Tên đăng nhập không tồn tại. Vui lòng đăng ký!",
+						"Đăng nhập thất bại",
+						JOptionPane.ERROR_MESSAGE
+				);
+				return;
+			}
+
+				try {
 					Random rd = new Random();
 					int portPeer = 10000 + rd.nextInt(1000);
 					int portServer = Integer.parseInt(txtPort.getText().trim());
-					UserDAO.updateIpPort(IP, portPeer, "online", userName);
 
 					Socket socketClient = new Socket(IP, portServer);
 					socketClient.setSoTimeout(5000); // timeout 5s
@@ -240,10 +333,6 @@ public class StartClientFrame extends JFrame implements ActionListener {
 					JOptionPane.showMessageDialog(this, "Lỗi không xác định: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
 					ex.printStackTrace();
 				}
-
-			}else{
-				JOptionPane.showMessageDialog(this, "Tên đăng nhập không đúng!", "Lỗi", JOptionPane.WARNING_MESSAGE);
-			}
 		}
 	}
 }
