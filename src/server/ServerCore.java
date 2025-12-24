@@ -63,6 +63,7 @@ public class ServerCore {
 		connection.close();
 	}
 
+
 	// client connect to server
 	private boolean waitForConnection() throws Exception {
 		connection = server.accept();

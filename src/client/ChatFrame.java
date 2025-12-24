@@ -38,12 +38,12 @@ public class ChatFrame extends JFrame {
 	 *
 	 */
 	// Socket
-	private static String URL_DIR = System.getProperty("user.dir");
-	private Socket socketChat;
-	private String nameUser = "", nameGuest = "", nameFile = "";
+	private static final String URL_DIR = System.getProperty("user.dir");
+	private  Socket socketChat;
+	private  String nameUser = "", nameGuest = "", nameFile = "";
 	public boolean isStop = false, isSendFile = false, isReceiveFile = false;
-	private ChatRoom chat;
-	private int portServer = 0;
+	private final ChatRoom chat;
+	private final int portServer = 0;
 	int voicePort = 60000 + new Random().nextInt(2000);
 	// Frame
 
@@ -193,34 +193,7 @@ public class ChatFrame extends JFrame {
 		btnPhone.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				try {
-					if (ChatFrame.this.voiceInfo == null) {
-						JOptionPane.showMessageDialog(null,
-								"Không có thông tin peer để chạy voice!",
-								"Error", JOptionPane.ERROR_MESSAGE);
-						return;
-					}
-
-					InetAddress peerAddress = voiceInfo.peerAddress;
-					int peerVoicePort = voiceInfo.peerVoicePort;
-
-					DatagramSocket voiceSocket = new DatagramSocket();
-
-					VoiceSendThread sendThread =
-							new VoiceSendThread(voiceSocket, peerAddress, peerVoicePort);
-
-					VoiceReceiveThread receiveThread =
-							new VoiceReceiveThread(voiceSocket);
-
-					sendThread.start();
-					receiveThread.start();
-
-					System.out.println("Voice call started → send to " +
-							peerAddress + ":" + peerVoicePort);
-
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
+					System.out.println("voice call");
 			}
 		});
 

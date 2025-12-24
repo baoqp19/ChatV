@@ -5,6 +5,7 @@ import java.awt.event.*;
 import java.io.*;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.Socket;
 import javax.swing.*;
 import javax.swing.border.*;
 

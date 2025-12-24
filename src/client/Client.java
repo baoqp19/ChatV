@@ -1,12 +1,13 @@
 package client;
-
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.*;
 import java.util.ArrayList;
 
+
 import data.Peer;
+import database.UserDAO;
 import tags.Decode;
 import tags.Encode;
 import tags.Tags;
@@ -16,11 +17,11 @@ public class Client {
 	public ArrayList<Peer> clientList = new ArrayList<>();
 	private ClientServer server;
 
-	private InetAddress serverIP;
-	private int serverPort;
-	private int clientPort;
+	private final InetAddress serverIP;
+	private final int serverPort;
+	private final int clientPort;
 
-	private String username;
+	private final String username;
 	private boolean isRunning = true;
 
 	private static final int TIMEOUT = 10000;
@@ -130,6 +131,7 @@ public class Client {
 
 	// ========================= EXIT CLIENT =========================
 	public void exit() throws IOException, ClassNotFoundException {
+		UserDAO.updateUserStatus(username, "OFFLINE");
 		isRunning = false;
 
 		socketClient = new Socket();

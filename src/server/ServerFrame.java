@@ -236,6 +236,7 @@ public class ServerFrame extends JFrame {
 		return lbl;
 	}
 
+
 	private void styleButton(JButton btn, Color bg, int fontSize) {
 		// Màu chính + màu hiệu ứng
 		Color hoverColor   = bg.brighter();                 // sáng hơn khi hover

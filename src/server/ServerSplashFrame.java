@@ -94,7 +94,7 @@ public class ServerSplashFrame extends JWindow {
         panel.add(percentageLabel);
 
         // Footer nhẹ
-        JLabel footer = new JLabel("© 2025 VKU - Đồ án Mạng Máy Tính", SwingConstants.CENTER);
+        JLabel footer = new JLabel("© 2025 VKU - Đồ án cơ sở", SwingConstants.CENTER);
         footer.setFont(new Font("Segoe UI", Font.ITALIC, 13));
         footer.setForeground(new Color(200, 230, 255));
         footer.setBounds(0, 300, 600, 20);

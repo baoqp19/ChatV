@@ -42,5 +42,23 @@ public class UserDAO {
         return false;
     }
 
+    public static boolean updateUserStatus(String username, String status) {
+        String sql = "UPDATE peers SET status = ?, last_seen = NOW() WHERE username = ?";
+
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, status);
+            ps.setString(2, username);
+
+            int rows = ps.executeUpdate();
+            return rows > 0; // true nếu update thành công
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
 }
 
