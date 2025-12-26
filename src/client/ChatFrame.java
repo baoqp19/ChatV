@@ -6,15 +6,17 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.Socket;
 import java.time.LocalDateTime;
 import java.util.Objects;
-
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
 import data.DataFile;
+import database.MessageDAO;
 import tags.Decode;
 import tags.Encode;
 import tags.Tags;
@@ -60,63 +62,72 @@ public class ChatFrame extends JFrame {
         this.chat = new ChatRoom(socketChat, nameUser, nameGuest);
         this.chat.start();
 
-        EventQueue.invokeLater(this::initializeUI);
-        this.setVisible(true);
+        EventQueue.invokeLater(() -> {
+            initializeUI();
+            loadHistory();
+            this.setVisible(true);
+        });
     }
+
+    // Store reference to the messages panel
+    private JPanel messagesPanel;
 
     // ============ MESSAGE DISPLAY METHODS ============
 
     public void updateChat_receive(String msg) {
-        String html = buildMessageHtml(msg, "left", "#f1f0f0", "black");
-        frameChat.appendToPane(txtDisplayMessage, html);
+        // Check if message is emoji
+        if (msg.startsWith("[emoji:") && msg.endsWith("]")) {
+            String emojiName = msg.substring(7, msg.length() - 1);
+            addEmojiMessageBubble(emojiName, "left");
+        } else {
+            addMessageBubble(msg, "left", new Color(255, 255, 255), Color.BLACK);
+        }
     }
 
     public void updateChat_send(String msg) {
-        String html = buildMessageHtml(msg, "right", "#0084ff", "white");
-        frameChat.appendToPane(txtDisplayMessage, html);
+        addMessageBubble(msg, "right", new Color(0, 132, 255), Color.WHITE);
     }
 
     public void updateChat_notify(String msg) {
-        String html = buildMessageHtml(msg, "right", "#f1c40f", "white");
-        frameChat.appendToPane(txtDisplayMessage, html);
+        addMessageBubble(msg, "right", new Color(241, 196, 15), Color.WHITE);
     }
 
     public void updateChat_send_Symbol(String msg) {
-        String html = "<table style='width: 100%;'>" +
-                "<tr align='right'>" +
-                "<td style='width: 59%;'></td>" +
-                "<td style='width: 40%;'>" + msg + "</td>" +
-                "</tr>" +
-                "</table>";
-        frameChat.appendToPane(txtDisplayMessage, html);
+        // For emoji - msg is emoji name like "like32"
+        addEmojiMessageBubble(msg, "right");
     }
 
-    private String buildMessageHtml(String msg, String align, String bgColor, String textColor) {
-        String time = String.format("%d:%d", LocalDateTime.now().getHour(), LocalDateTime.now().getMinute());
-        // Escape % characters in message to prevent format string interpretation
-        String safeMsgToDisplay = msg.replace("%", "%%");
+    private void addMessageBubble(String msg, String align, Color bgColor, Color textColor) {
+        JPanel bubbleContainer = new JPanel();
+        bubbleContainer.setLayout(new FlowLayout("left".equals(align) ? FlowLayout.LEFT : FlowLayout.RIGHT));
+        bubbleContainer.setBackground(new Color(54, 57, 63));
+        bubbleContainer.setMaximumSize(new Dimension(500, 100));
 
-        if ("left".equals(align)) {
-            // Messages on the left: message cell first, then empty space
-            return String.format(
-                    "<table style='color: %s; clear:both; width: 100%%;'>" +
-                            "<tr align='left'>" +
-                            "<td style='width: 40%%; background-color: %s;'>%s<br>%s</td>" +
-                            "<td style='width: 60%%;'></td>" +
-                            "</tr>" +
-                            "</table>",
-                    textColor, bgColor, time, safeMsgToDisplay);
-        } else {
-            // Messages on the right: empty space first, then message cell
-            return String.format(
-                    "<table style='color: %s; clear:both; width: 100%%;'>" +
-                            "<tr align='right'>" +
-                            "<td style='width: 60%%;'></td>" +
-                            "<td style='width: 40%%; background-color: %s;'>%s<br>%s</td>" +
-                            "</tr>" +
-                            "</table>",
-                    textColor, bgColor, time, safeMsgToDisplay);
-        }
+        JPanel bubble = new JPanel();
+        bubble.setBackground(bgColor);
+        bubble.setLayout(new BoxLayout(bubble, BoxLayout.Y_AXIS));
+        bubble.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+
+        String time = String.format("%02d:%02d", LocalDateTime.now().getHour(), LocalDateTime.now().getMinute());
+
+        JLabel messageLabel = new JLabel(msg);
+        messageLabel.setForeground(textColor);
+        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        messageLabel.setMaximumSize(new Dimension(300, 50));
+        messageLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        bubble.add(messageLabel);
+
+        JLabel timeLabel = new JLabel(time);
+        timeLabel.setForeground(new Color(102, 102, 102));
+        timeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        timeLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        bubble.add(Box.createVerticalStrut(6));
+        bubble.add(timeLabel);
+
+        bubbleContainer.add(bubble);
+        messagesPanel.add(bubbleContainer);
+        messagesPanel.revalidate();
+        messagesPanel.repaint();
     }
 
     // ============ UI INITIALIZATION ============
@@ -210,17 +221,19 @@ public class ChatFrame extends JFrame {
         panel.setLayout(null);
         contentPane.add(panel);
 
-        txtDisplayMessage = new JTextPane();
-        txtDisplayMessage.setEditable(false);
-        txtDisplayMessage.setContentType("text/html");
-        txtDisplayMessage.setBackground(new Color(54, 57, 63));
-        txtDisplayMessage.setForeground(Color.WHITE);
-        txtDisplayMessage.setFont(new Font("Courier New", Font.PLAIN, 18));
-        frameChat.appendToPane(txtDisplayMessage, "<div style='background-color:white'></div>");
+        // Use a JPanel with BoxLayout for message display
+        messagesPanel = new JPanel();
+        messagesPanel.setLayout(new BoxLayout(messagesPanel, BoxLayout.Y_AXIS));
+        messagesPanel.setBackground(new Color(54, 57, 63));
 
-        JScrollPane scrollPane = new JScrollPane(txtDisplayMessage);
+        JScrollPane scrollPane = new JScrollPane(messagesPanel);
         scrollPane.setBounds(0, 0, 562, 323);
+        scrollPane.setBackground(new Color(54, 57, 63));
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         panel.add(scrollPane);
+
+        // Keep txtDisplayMessage for backward compatibility
+        txtDisplayMessage = new JTextPane();
     }
 
     private void addEmojiPanel() {
@@ -252,10 +265,16 @@ public class ChatFrame extends JFrame {
     }
 
     private void sendEmoji(String imageName) {
-        String msg = "<img src='" + ChatFrame.class.getResource("/image/" + imageName + ".png") + "'></img>";
         try {
-            chat.sendMessage(sendMessage(msg));
-            updateChat_send_Symbol(msg);
+            // Send emoji name through network
+            String emojiMsg = "[emoji:" + imageName + "]";
+            chat.sendMessage(sendMessage(emojiMsg));
+
+            // Display emoji locally
+            addEmojiMessageBubble(imageName, "right");
+
+            // Save emoji to database
+            MessageDAO.saveMessage(nameUser, nameGuest, emojiMsg);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -312,11 +331,201 @@ public class ChatFrame extends JFrame {
 
         txtMessage.setText("");
         try {
+            // Send message through network
             chat.sendMessage(sendMessage(msg));
+
+            // Display message locally
             updateChat_send(msg);
+
+            // Save message to database
+            MessageDAO.saveMessage(nameUser, nameGuest, msg);
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void loadHistory() {
+        new Thread(() -> {
+            var history = MessageDAO.getConversation(nameUser, nameGuest, 50);
+            if (history == null || history.isEmpty()) {
+                return;
+            }
+            SwingUtilities.invokeLater(() -> {
+                for (MessageDAO.ChatMessage m : history) {
+                    String content = m.content();
+
+                    // Check if message is emoji
+                    if (content.startsWith("[emoji:") && content.endsWith("]")) {
+                        String emojiName = content.substring(7, content.length() - 1);
+                        addEmojiMessageBubbleWithTime(emojiName,
+                                m.sender().equals(nameUser) ? "right" : "left",
+                                m.createdAt());
+                    } else {
+                        // Display text message with timestamp
+                        addMessageBubbleWithTime(content,
+                                m.sender().equals(nameUser) ? "right" : "left",
+                                m.sender().equals(nameUser) ? new Color(0, 132, 255) : new Color(255, 255, 255),
+                                m.sender().equals(nameUser) ? Color.WHITE : Color.BLACK,
+                                m.createdAt());
+                    }
+                }
+            });
+        }).start();
+    }
+
+    private void addMessageBubbleWithTime(String msg, String align, Color bgColor, Color textColor,
+            java.sql.Timestamp ts) {
+        java.time.LocalDateTime ldt = ts.toLocalDateTime();
+        String time = String.format("%02d:%02d", ldt.getHour(), ldt.getMinute());
+
+        JPanel bubbleContainer = new JPanel();
+        bubbleContainer.setLayout(new FlowLayout("left".equals(align) ? FlowLayout.LEFT : FlowLayout.RIGHT));
+        bubbleContainer.setBackground(new Color(54, 57, 63));
+        bubbleContainer.setMaximumSize(new Dimension(500, 100));
+
+        JPanel bubble = new JPanel();
+        bubble.setBackground(bgColor);
+        bubble.setLayout(new BoxLayout(bubble, BoxLayout.Y_AXIS));
+        bubble.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+
+        JLabel messageLabel = new JLabel(msg);
+        messageLabel.setForeground(textColor);
+        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        messageLabel.setMaximumSize(new Dimension(300, 50));
+        messageLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        bubble.add(messageLabel);
+
+        JLabel timeLabel = new JLabel(time);
+        timeLabel.setForeground(new Color(102, 102, 102));
+        timeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        timeLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        bubble.add(Box.createVerticalStrut(6));
+        bubble.add(timeLabel);
+
+        bubbleContainer.add(bubble);
+        messagesPanel.add(bubbleContainer);
+        messagesPanel.revalidate();
+        messagesPanel.repaint();
+    }
+
+    private ImageIcon getEmojiImage(String emojiName) {
+        // Map emoji names to image paths
+        String imagePath = null;
+        switch (emojiName) {
+            case "like32":
+                imagePath = "/image/like32.png";
+                break;
+            case "love32":
+                imagePath = "/image/love32.png";
+                break;
+            case "smile32":
+                imagePath = "/image/smile32.png";
+                break;
+            case "sad32":
+                imagePath = "/image/sad32.png";
+                break;
+            case "img2":
+                imagePath = "/image/img2.png";
+                break;
+            default:
+                return null;
+        }
+
+        try {
+            return new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource(imagePath)));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private void addEmojiMessageBubble(String emojiName, String align) {
+        String time = String.format("%02d:%02d", LocalDateTime.now().getHour(), LocalDateTime.now().getMinute());
+
+        // Determine colors based on alignment (right=sender/blue, left=recipient/white)
+        boolean isSender = "right".equals(align);
+        Color bgColor = isSender ? new Color(0, 132, 255) : new Color(255, 255, 255);
+        Color timeColor = new Color(102, 102, 102);
+
+        JPanel bubbleContainer = new JPanel();
+        bubbleContainer.setLayout(new FlowLayout("left".equals(align) ? FlowLayout.LEFT : FlowLayout.RIGHT, 5, 5));
+        bubbleContainer.setBackground(new Color(54, 57, 63));
+        bubbleContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
+
+        JPanel bubble = new JPanel();
+        bubble.setBackground(bgColor);
+        bubble.setLayout(new BoxLayout(bubble, BoxLayout.Y_AXIS));
+        bubble.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        bubble.setPreferredSize(new Dimension(100, 120));
+
+        // Add emoji image (larger size)
+        ImageIcon emoji = getEmojiImage(emojiName);
+        if (emoji != null) {
+            Image scaledImg = emoji.getImage().getScaledInstance(64, 64, Image.SCALE_SMOOTH);
+            JLabel emojiLabel = new JLabel(new ImageIcon(scaledImg));
+            emojiLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            emojiLabel.setMaximumSize(new Dimension(64, 64));
+            bubble.add(Box.createVerticalGlue());
+            bubble.add(emojiLabel);
+            bubble.add(Box.createVerticalGlue());
+        }
+
+        JLabel timeLabel = new JLabel(time);
+        timeLabel.setForeground(timeColor);
+        timeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 9));
+        timeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        timeLabel.setMaximumSize(new Dimension(100, 16));
+        bubble.add(timeLabel);
+
+        bubbleContainer.add(bubble);
+        messagesPanel.add(bubbleContainer);
+        messagesPanel.revalidate();
+        messagesPanel.repaint();
+    }
+
+    private void addEmojiMessageBubbleWithTime(String emojiName, String align, java.sql.Timestamp ts) {
+        java.time.LocalDateTime ldt = ts.toLocalDateTime();
+        String time = String.format("%02d:%02d", ldt.getHour(), ldt.getMinute());
+
+        // Determine colors based on alignment (right=sender/blue, left=recipient/white)
+        boolean isSender = "right".equals(align);
+        Color bgColor = isSender ? new Color(0, 132, 255) : new Color(255, 255, 255);
+        Color timeColor = new Color(102, 102, 102);
+
+        JPanel bubbleContainer = new JPanel();
+        bubbleContainer.setLayout(new FlowLayout("left".equals(align) ? FlowLayout.LEFT : FlowLayout.RIGHT, 5, 5));
+        bubbleContainer.setBackground(new Color(54, 57, 63));
+        bubbleContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
+
+        JPanel bubble = new JPanel();
+        bubble.setBackground(bgColor);
+        bubble.setLayout(new BoxLayout(bubble, BoxLayout.Y_AXIS));
+        bubble.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        bubble.setPreferredSize(new Dimension(100, 120));
+
+        // Add emoji image (larger size)
+        ImageIcon emoji = getEmojiImage(emojiName);
+        if (emoji != null) {
+            Image scaledImg = emoji.getImage().getScaledInstance(64, 64, Image.SCALE_SMOOTH);
+            JLabel emojiLabel = new JLabel(new ImageIcon(scaledImg));
+            emojiLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            emojiLabel.setMaximumSize(new Dimension(64, 64));
+            bubble.add(Box.createVerticalGlue());
+            bubble.add(emojiLabel);
+            bubble.add(Box.createVerticalGlue());
+        }
+
+        JLabel timeLabel = new JLabel(time);
+        timeLabel.setForeground(timeColor);
+        timeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 9));
+        timeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        timeLabel.setMaximumSize(new Dimension(100, 16));
+        bubble.add(timeLabel);
+
+        bubbleContainer.add(bubble);
+        messagesPanel.add(bubbleContainer);
+        messagesPanel.revalidate();
+        messagesPanel.repaint();
     }
 
     private void selectAndSendFile() {
@@ -351,8 +560,10 @@ public class ChatFrame extends JFrame {
         private ObjectOutputStream outPeer;
         private ObjectInputStream inPeer;
         private boolean finishReceive = false;
-        private int sizeReceive = 0;
+        private long sizeReceiveBytes = 0;
         private String nameFileReceive = "";
+        private FileOutputStream fileReceiveStream;
+        private File fileReceiveTemp;
 
         public ChatRoom(Socket connection, String name, String guest) {
             this.connect = connection;
@@ -391,7 +602,20 @@ public class ChatFrame extends JFrame {
                 handleStringMessage(msgObj);
             } else if (obj instanceof DataFile) {
                 DataFile data = (DataFile) obj;
-                sizeReceive++;
+                writeIncomingData(data);
+            }
+        }
+
+        private void writeIncomingData(DataFile data) throws IOException {
+            if (fileReceiveStream == null) {
+                // No active file transfer; ignore stray data
+                return;
+            }
+
+            fileReceiveStream.write(data.data, 0, data.data.length);
+            sizeReceiveBytes += data.data.length;
+            if (lblReceive != null) {
+                lblReceive.setText("Receiving... " + Math.max(1, sizeReceiveBytes / 1024) + " KB");
             }
         }
 
@@ -412,6 +636,7 @@ public class ChatFrame extends JFrame {
                 String message = Decode.getMessage(msgObj);
                 if (message != null && !message.isEmpty()) {
                     updateChat_receive(message);
+                    MessageDAO.saveMessage(nameGuest, nameUser, message);
                 } else {
                     System.out.println("Failed to decode message: " + msgObj);
                 }
@@ -444,12 +669,20 @@ public class ChatFrame extends JFrame {
         }
 
         private void handleFileRequest(String msgObj) throws Exception {
-            isStop = true;
             nameFileReceive = msgObj.substring(10, msgObj.length() - 11);
-            File fileReceive = new File(URL_DIR + "/" + nameFileReceive);
+            finishReceive = false;
+            sizeReceiveBytes = 0;
 
-            if (!fileReceive.exists()) {
-                fileReceive.createNewFile();
+            fileReceiveTemp = new File(URL_DIR, nameFileReceive);
+            if (fileReceiveTemp.getParentFile() != null && !fileReceiveTemp.getParentFile().exists()) {
+                fileReceiveTemp.getParentFile().mkdirs();
+            }
+
+            try {
+                fileReceiveStream = new FileOutputStream(fileReceiveTemp, false);
+            } catch (IOException io) {
+                Tags.show(ChatFrame.this, "Cannot prepare file for receiving: " + io.getMessage(), true);
+                return;
             }
 
             String ack = Tags.FILE_REQ_ACK_OPEN_TAG + Integer.toBinaryString(port) +
@@ -472,21 +705,36 @@ public class ChatFrame extends JFrame {
         private void handleFileDataBegin() throws Exception {
             finishReceive = false;
             lblReceive.setVisible(true);
+            lblReceive.setText("Receiving...");
         }
 
         private void handleFileDataClose() throws Exception {
-            updateChat_receive("File received: " + nameFileReceive + " (" + sizeReceive + " KB)");
-            sizeReceive = 0;
+            closeFileReceiveStream();
+            long sizeKb = Math.max(1, sizeReceiveBytes / 1024);
+            updateChat_receive("File received: " + nameFileReceive + " (" + sizeKb + " KB)");
+            sizeReceiveBytes = 0;
             lblReceive.setVisible(false);
 
             new Thread(this::showSaveFileDialog).start();
             finishReceive = true;
         }
 
+        private void closeFileReceiveStream() {
+            if (fileReceiveStream != null) {
+                try {
+                    fileReceiveStream.flush();
+                    fileReceiveStream.close();
+                } catch (IOException ignored) {
+                    // Ignore cleanup exceptions
+                }
+                fileReceiveStream = null;
+            }
+        }
+
         private void cleanupIncompleteFile() {
-            File fileTemp = new File(URL_DIR + nameFileReceive);
-            if (fileTemp.exists() && !finishReceive) {
-                fileTemp.delete();
+            closeFileReceiveStream();
+            if (fileReceiveTemp != null && fileReceiveTemp.exists() && !finishReceive) {
+                fileReceiveTemp.delete();
             }
         }
 
@@ -545,9 +793,9 @@ public class ChatFrame extends JFrame {
                     try {
                         Thread.sleep(1000);
                         frameChat.copyFileReceive(
-                                new FileInputStream(URL_DIR + nameFileReceive),
+                                new FileInputStream(fileReceiveTemp.getAbsolutePath()),
                                 new FileOutputStream(destinationFile.getAbsolutePath()),
-                                URL_DIR + nameFileReceive);
+                                fileReceiveTemp.getAbsolutePath());
                     } catch (Exception e) {
                         Tags.show(ChatFrame.this, "Error receiving file!", false);
                     }
