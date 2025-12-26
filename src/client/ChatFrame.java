@@ -1,26 +1,15 @@
 package client;
 
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
+import java.io.*;
 import java.net.Socket;
 import java.time.LocalDateTime;
 import java.util.Objects;
-import java.util.Random;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -33,704 +22,556 @@ import tags.Tags;
 import static tags.Encode.sendMessage;
 
 public class ChatFrame extends JFrame {
-
-	/**
-	 *
-	 */
-	// Socket
-	private static final String URL_DIR = System.getProperty("user.dir");
-	private  Socket socketChat;
-	private  String nameUser = "", nameGuest = "", nameFile = "";
-	public boolean isStop = false, isSendFile = false, isReceiveFile = false;
-	private final ChatRoom chat;
-	private final int portServer = 0;
-	int voicePort = 60000 + new Random().nextInt(2000);
-	// Frame
-
-	private static final long serialVersionUID = 1L;
-	private JPanel contentPane;
-	private VoiceInfo voiceInfo;
-	private JTextField txtMessage;
-	private JTextPane txtDisplayMessage;
-	private JButton btnSendFile;
-	private JLabel lblReceive;
-	private ChatFrame frame = this;
-	private JProgressBar progressBar;
-	JButton btnSend;
-	private int port;
-	private int portVoice;
-	private ControllerChatFrame frameChat = new ControllerChatFrame();
-
-	public ChatFrame(String user, String guest, Socket socket, int port) throws Exception {
-		this(user, guest, socket, port, port);  // KHÔNG tạo frame mới!
-	}
-
-	public ChatFrame(String user, String guest, Socket socket, int port, int portVoice) throws Exception {
-		nameUser = user;
-		nameGuest = guest;
-		socketChat = socket;
-		this.port = port;
-		this.portVoice = portVoice;
-
-		chat = new ChatRoom(socketChat, nameUser, nameGuest);
-		chat.start();
-
-		EventQueue.invokeLater(new Runnable() {
-			public void run() { initial(); }
-		});
-
-		this.setVisible(true);
-	}
-
-	// TN nhận
-	public void updateChat_receive(String msg) {
-		String html =
-				"<div class='left' style='width: 40%; background-color: #f1f0f0; color: black;'>"
-						+ msg + "<br>"
-						+ LocalDateTime.now().getHour() + ":"
-						+ LocalDateTime.now().getMinute()
-						+ "</div>";
-
-		frameChat.appendToPane(txtDisplayMessage, html);
-	}
-
-	// TN gửi
-	public void updateChat_send(String msg) {
-		String html =
-				"<table class='bang' style='color: white; clear:both; width: 100%;'>" +
-						"<tr align='right'>" +
-						"<td style='width: 59%;'></td>" +
-						"<td style='width: 40%; background-color: #0084ff;'>" +
-						LocalDateTime.now().getHour() + ":" +
-						LocalDateTime.now().getMinute() + "<br>" +
-						msg +
-						"</td>" +
-						"</tr>" +
-						"</table>";
-
-		frameChat.appendToPane(txtDisplayMessage, html);
-	}
-
-
-	// TN thông báo
-	public void updateChat_notify(String msg) {
-		String html =
-				"<table class='bang' style='color: white; clear:both; width: 100%;'>" +
-						"<tr align='right'>" +
-						"<td style='width: 59%;'></td>" +
-						"<td style='width: 40%; background-color: #f1c40f;'>" +
-						msg +
-						"</td>" +
-						"</tr>" +
-						"</table>";
-
-		frameChat.appendToPane(txtDisplayMessage, html);
-	}
-
-
-	// TN gửi biểu tượng / emoji
-	public void updateChat_send_Symbol(String msg) {
-		String html =
-				"<table style='width: 100%;'>" +
-						"<tr align='right'>" +
-						"<td style='width: 59%;'></td>" +
-						"<td style='width: 40%;'>" +
-						msg +
-						"</td>" +
-						"</tr>" +
-						"</table>";
-
-		frameChat.appendToPane(txtDisplayMessage, html);
-	}
-
-	/**
-	 * Create the frame.
-	 */
-	public void initial() {
-		setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-		addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent ev) {
-				try {
-					isStop = true;
-					frame.dispose();
-					chat.sendMessage(Tags.CHAT_CLOSE_TAG);
-					chat.stopChat();
-					System.gc();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		});
-
-		setResizable(false);
-		setTitle("BOX CHAT");
-		setBounds(100, 100, 576, 595);
-		contentPane = new JPanel();
-		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-		setContentPane(contentPane);
-		contentPane.setLayout(null);
-
-		JPanel panel = new JPanel();
-		panel.setBackground(Color.LIGHT_GRAY);
-		panel.setBounds(0, 0, 573, 67);
-		contentPane.add(panel);
-		panel.setLayout(null);
-
-		JLabel lblNewLabel = new JLabel();
-		lblNewLabel.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/VKU64.png"))));
-		lblNewLabel.setBounds(20, 0, 66, 67);
-		panel.add(lblNewLabel);
-
-		JLabel nameLabel = new JLabel(nameGuest);
-		nameLabel.setFont(new Font("Tahoma", Font.PLAIN, 32));
-		nameLabel.setToolTipText("");
-		nameLabel.setBounds(96, 10, 129, 38);
-		panel.add(nameLabel);
-
-		JButton btnPhone = new JButton();
-		btnPhone.setToolTipText("voice call");
-		btnPhone.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-					System.out.println("voice call");
-			}
-		});
-
-		btnPhone.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/phone48.png"))));
-		btnPhone.setBounds(403, 16, 32, 32);
-		btnPhone.setBorder(new EmptyBorder(0, 0, 0, 0));
-		btnPhone.setContentAreaFilled(false);
-		panel.add(btnPhone);
-
-		JButton btnVideo = new JButton("");
-		btnVideo.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				System.out.println("Video call");
-
-			}
-		});
-
-		btnVideo.setToolTipText("video call");
-		btnVideo.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/videocall48.png"))));
-		btnVideo.setBounds(474, 16, 32, 32);
-		btnVideo.setBorder(new EmptyBorder(0, 0, 0, 0));
-		btnVideo.setContentAreaFilled(false);
-		panel.add(btnVideo);
-
-		JPanel panel_6 = new JPanel();
-		txtDisplayMessage = new JTextPane();
-		txtDisplayMessage.setEditable(false);
-		txtDisplayMessage.setContentType("text/html");
-		txtDisplayMessage.setBackground(new Color(54, 57, 63));
-		txtDisplayMessage.setForeground(Color.WHITE);
-		txtDisplayMessage.setFont(new Font("Courier New", Font.PLAIN, 18));
-		frameChat.appendToPane(txtDisplayMessage, "<div class='clear' style='background-color:white'></div>"); // set default
-
-		panel_6.setBounds(0, 66, 562, 323);
-		panel_6.setLayout(null);
-		JScrollPane scrollPane = new JScrollPane(txtDisplayMessage);
-		scrollPane.setBounds(0, 0, 562, 323);
-		panel_6.add(scrollPane);
-		contentPane.add(panel_6);
-
-		JPanel panel_2 = new JPanel();
-		panel_2.setBounds(0, 372, 573, 73);
-		contentPane.add(panel_2);
-		panel_2.setLayout(null);
-
-		JButton btnNewButton_2 = new JButton("");
-		btnNewButton_2.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				String msg = "<img src='" + ChatFrame.class.getResource("/image/like32.png") + "'></img>";
-				try {
-					chat.sendMessage(sendMessage(msg));
-				} catch (Exception e1) {
-					e1.printStackTrace();
-				}
-				updateChat_send_Symbol(msg);
-			}
-		});
-
-		btnNewButton_2.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/like32.png"))));
-		btnNewButton_2.setBounds(31, 22, 44, 41);
-		btnNewButton_2.setBorder(new EmptyBorder(0, 0, 0, 0));
-		btnNewButton_2.setContentAreaFilled(false);
-		panel_2.add(btnNewButton_2);
-
-		JButton btnNewButton_4 = new JButton("");
-		btnNewButton_4.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				String msg = "<img src='" + ChatFrame.class.getResource("/image/love32.png") + "'></img>";
-				try {
-					chat.sendMessage(sendMessage(msg));
-				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				updateChat_send_Symbol(msg);
-			}
-		});
-
-		btnNewButton_4.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/love32.png"))));
-		btnNewButton_4.setBounds(144, 22, 44, 41);
-		btnNewButton_4.setBorder(new EmptyBorder(0, 0, 0, 0));
-		btnNewButton_4.setContentAreaFilled(false);
-		panel_2.add(btnNewButton_4);
-
-		JButton btnNewButton_5 = new JButton("");
-		btnNewButton_5.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				String msg = "<img src='" + ChatFrame.class.getResource("/image/smile32.png") + "'></img>";
-				try {
-					chat.sendMessage(sendMessage(msg));
-				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				updateChat_send_Symbol(msg);
-			}
-		});
-		btnNewButton_5.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/smile32.png"))));
-		btnNewButton_5.setBounds(265, 22, 44, 41);
-		btnNewButton_5.setBorder(new EmptyBorder(0, 0, 0, 0));
-		btnNewButton_5.setContentAreaFilled(false);
-		panel_2.add(btnNewButton_5);
-
-		JButton btnNewButton_7 = new JButton("");
-		btnNewButton_7.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				String msg = "<img src='" + ChatFrame.class.getResource("/image/sad32.png") + "'></img>";
-				try {
-					chat.sendMessage(sendMessage(msg));
-				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				updateChat_send_Symbol(msg);
-			}
-		});
-		btnNewButton_7.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/sad32.png"))));
-		btnNewButton_7.setBounds(378, 22, 44, 41);
-		btnNewButton_7.setBorder(new EmptyBorder(0, 0, 0, 0));
-		btnNewButton_7.setContentAreaFilled(false);
-		panel_2.add(btnNewButton_7);
-
-		JButton btnNewButton_8 = new JButton("");
-		btnNewButton_8.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				String msg = "<img src='" + ChatFrame.class.getResource("/image/img2.png") + "'></img>";
-				try {
-					chat.sendMessage(sendMessage(msg));
-				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				updateChat_send_Symbol(msg);
-			}
-		});
-		btnNewButton_8.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/img2.png"))));
-		btnNewButton_8.setBounds(495, 22, 44, 41);
-		btnNewButton_8.setBorder(new EmptyBorder(0, 0, 0, 0));
-		btnNewButton_8.setContentAreaFilled(false);
-		panel_2.add(btnNewButton_8);
-
-		progressBar = new JProgressBar();
-		progressBar.setBounds(10, 22, 540, 41);
-		progressBar.setVisible(false);
-		panel_2.add(progressBar);
-
-		JPanel panel_3 = new JPanel();
-		panel_3.setBounds(0, 446, 562, 73);
-		contentPane.add(panel_3);
-		panel_3.setLayout(null);
-
-		btnSend = new JButton();
-		btnSend.setBorder(new EmptyBorder(0, 0, 0, 0));
-		btnSend.setContentAreaFilled(false);
-		ImageIcon originalIcon = new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/send32.png")));
-		Image scaledImage = originalIcon.getImage().getScaledInstance(36, 36, Image.SCALE_SMOOTH);
-		btnSend.setIcon(new ImageIcon(scaledImage));
-		btnSend.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				String msg = txtMessage.getText();
-				// Clear messageif
-				if (msg.equals(""))
-					return;
-				txtMessage.setText("");
-				try {
-					chat.sendMessage(sendMessage(msg));
-				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				updateChat_send(msg);
-
-			}
-		});
-		btnSend.setBounds(498, 5, 64, 64);
-		panel_3.add(btnSend);
-
-		btnSendFile = new JButton();
-		btnSendFile.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				JFileChooser fileChooser = new JFileChooser();
-				fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
-				fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-				int result = fileChooser.showOpenDialog(frame);
-				if (result == JFileChooser.APPROVE_OPTION) {
-					isSendFile = true;
-					String path_send = (fileChooser.getSelectedFile().getAbsolutePath());
-					System.out.println(path_send);
-					nameFile = fileChooser.getSelectedFile().getName();
-					File file = fileChooser.getSelectedFile();
-					// if (isSendFile)
-					try {
-						chat.sendMessage(Encode.sendFile(nameFile));
-					} catch (Exception ex) {
-						ex.printStackTrace();
-					}
-
-					System.out.println("nameFile: " + nameFile);
-					try {
-						chat.sendFile(file);
-					} catch (Exception e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					}
-				}
-			}
-		});
-
-		btnSendFile.setBorder(new EmptyBorder(0, 0, 0, 0));
-		btnSendFile.setContentAreaFilled(false);
-		btnSendFile.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource("/image/file32.png"))));
-		btnSendFile.setBounds(440, 10, 64, 53);
-		panel_3.add(btnSendFile);
-
-		txtMessage = new JTextField();
-		txtMessage.setBounds(0, 5, 433, 45);
-		panel_3.add(txtMessage);
-		txtMessage.setColumns(10);
-		txtMessage.setFont(new Font("Courier New", Font.PLAIN, 18));
-		txtMessage.addKeyListener(new KeyAdapter() {
-			@Override
-			public void keyPressed(KeyEvent e) {
-				if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-					btnSend.doClick();
-				}
-			}
-		});
-
-		lblReceive = new JLabel("");
-		lblReceive.setFont(new Font("Tahoma", Font.PLAIN, 18));
-		lblReceive.setBounds(47, 529, 465, 29);
-		lblReceive.setVisible(false);
-		contentPane.add(lblReceive);
-	}
-
-	public class ChatRoom extends Thread {
-
-		private Socket connect;
-		private ObjectOutputStream outPeer;
-		private ObjectInputStream inPeer;
-		private boolean continueSendFile = true, finishReceive = false;
-		private int sizeOfSend = 0, sizeOfData = 0, sizeFile = 0, sizeReceive = 0;
-		private String nameFileReceive = "";
-		private InputStream inFileSend;
-		private DataFile dataFile;
-
-		public ChatRoom(Socket connection, String name, String guest) throws Exception {
-			connect = new Socket();
-			connect = connection;
-			nameGuest = guest;
-			System.out.println(connect);
-		}
-
-		@Override
-		public void run() {
-			super.run();
-			System.out.println("Chat Room start");
-			OutputStream out = null;
-
-			while (!isStop) {
-				try {
-					inPeer = new ObjectInputStream(connect.getInputStream());
-					Object obj = inPeer.readObject();
-					System.out.println("obj" + obj);
-
-					// ======================= STRING MESSAGE ==========================
-					if (obj instanceof String) {
-						String msgObj = obj.toString();
-						System.out.println("msgObj" + msgObj);
-						// ============================ VOICE SESSION ACCEPT ============================
-						if (msgObj.startsWith("<SESSION_ACCEPT>")) {
-
-							System.out.println("SESSION_ACCEPT received: " + msgObj);
-
-							String[] peers = msgObj.split("<PEER>");
-							ChatFrame.this.voiceInfo = null;
-
-
-							for (String p : peers) {
-								if (p.contains("<PEER_NAME>")
-										&& p.contains("<IP>")
-										&& p.contains("<PORT>")) {
-
-									String name = p.split("<PEER_NAME>")[1].split("</PEER_NAME>")[0];
-									String rawIP = p.split("<IP>")[1].split("</IP>")[0];
-									String ip = rawIP.replace("/", "").trim();
-									int port = Integer.parseInt(
-											p.split("<PORT>")[1].split("</PORT>")[0]
-									);
-
-									// CHỈ LẤY PEER KHÁC MÌNH
-//									if (!name.equals(myName)) {
-									ChatFrame.this.voiceInfo = new VoiceInfo(InetAddress.getByName(ip), port, name);
-
-									System.out.println("Voice Peer FOUND:");
-									System.out.println(" Name : " + name);
-									System.out.println(" IP   : " + ip);
-									System.out.println(" Port : " + port);
-//									}
-								}
-							}
-
-							if (ChatFrame.this.voiceInfo == null) {
-								System.out.println("⚠ No peer found");
-							}
-
-							continue;
-						}
-						// ============================================================================
-
-						// ================== CHAT CLOSE ===================
-						if (msgObj.equals(Tags.CHAT_CLOSE_TAG)) {
-							isStop = true;
-							Tags.show(frame, nameGuest + " This window will close.", false);
-							try {
-								frame.dispose();
-								chat.sendMessage(Tags.CHAT_CLOSE_TAG);
-								chat.stopChat();
-								System.gc();
-							} catch (Exception e) {
-								e.printStackTrace();
-							}
-							connect.close();
-							break;
-						}
-
-						// ================== FILE REQUEST ===================
-						if (Decode.checkFile(msgObj)) {
-							System.out.println("Check file: " + URL_DIR + "/" + nameFileReceive);
-							isReceiveFile = true;
-
-							nameFileReceive = msgObj.substring(10, msgObj.length() - 11);
-							File fileReceive = new File(URL_DIR + "/" + nameFileReceive);
-
-							if (!fileReceive.exists()) {
-								fileReceive.createNewFile();
-							}
-
-							String msg = Tags.FILE_REQ_ACK_OPEN_TAG + Integer.toBinaryString(portServer)
-									+ Tags.FILE_REQ_ACK_CLOSE_TAG;
-							sendMessage(msg);
-						}
-
-						// ================== FILE FEEDBACK ===================
-						else if (Decode.checkFeedBack(msgObj)) {
-							btnSendFile.setEnabled(false);
-
-							new Thread(() -> {
-								try {
-									sendMessage(Tags.FILE_DATA_BEGIN_TAG);
-									updateChat_notify("You are sending file: " + nameFile);
-									isSendFile = false;
-								} catch (Exception e) {
-									e.printStackTrace();
-								}
-							}).start();
-						}
-
-						// ================== FILE START RECEIVE ===================
-						else if (msgObj.equals(Tags.FILE_DATA_BEGIN_TAG)) {
-							finishReceive = false;
-							lblReceive.setVisible(true);
-							out = new FileOutputStream(URL_DIR + nameFileReceive);
-						}
-
-						// ================== FILE END RECEIVE ===================
-						else if (msgObj.equals(Tags.FILE_DATA_CLOSE_TAG)) {
-							updateChat_receive("You received file: " + nameFileReceive + " (" + sizeReceive + " KB)");
-							sizeReceive = 0;
-
-							out.flush();
-							out.close();
-							lblReceive.setVisible(false);
-
-							new Thread(this::showSaveFile).start();
-
-							finishReceive = true;
-						}
-
-						// ================== NORMAL CHAT MESSAGE ===================
-						else {
-							String message = Decode.getMessage(msgObj);
-							updateChat_receive(message);
-						}
-					}
-
-					// ======================= FILE DATA BLOCK ==========================
-					else if (obj instanceof DataFile) {
-						DataFile data = (DataFile) obj;
-						++sizeReceive;
-						out.write(data.data);
-					}
-
-				} catch (Exception e) {
-					File fileTemp = new File(URL_DIR + nameFileReceive);
-					if (fileTemp.exists() && !finishReceive) {
-						fileTemp.delete();
-					}
-				}
-			}
-		}
-
-
-		private void getData(File file) throws Exception {
-			File fileData = file;
-			if (fileData.exists()) {
-				sizeOfSend = 0;
-				dataFile = new DataFile();
-				sizeFile = (int) fileData.length();
-				sizeOfData = sizeFile % 1024 == 0 ? (int) (fileData.length() / 1024)
-						: (int) (fileData.length() / 1024) + 1;
-				inFileSend = new FileInputStream(fileData);
-			}
-		}
-
-		public void sendFile(File file) throws Exception {
-
-			btnSendFile.setEnabled(false);
-			getData(file);
-			lblReceive.setVisible(true);
-			if (sizeOfData > Tags.MAX_MSG_SIZE / 1024) {
-				lblReceive.setText("File is too large...");
-				inFileSend.close();
-				sendMessage(Tags.FILE_DATA_CLOSE_TAG);
-				btnSendFile.setEnabled(true);
-				isSendFile = false;
-				inFileSend.close();
-				return;
-			}
-
-			progressBar.setVisible(true);
-			progressBar.setValue(0);
-
-			lblReceive.setText("Sending ...");
-			do {
-				System.out.println("sizeOfSend : " + sizeOfSend);
-				if (continueSendFile) {
-					continueSendFile = false;
-//					updateChat_notify("If duoc thuc thi: " + String.valueOf(continueSendFile));
-					new Thread(new Runnable() {
-
-						@Override
-						public void run() {
-							try {
-								inFileSend.read(dataFile.data);
-								sendMessage(dataFile);
-								sizeOfSend++;
-								if (sizeOfSend == sizeOfData - 1) {
-									int size = sizeFile - sizeOfSend * 1024;
-									dataFile = new DataFile(size);
-								}
-								progressBar.setValue(sizeOfSend * 100 / sizeOfData);
-								if (sizeOfSend >= sizeOfData) {
-									inFileSend.close();
-									isSendFile = true;
-									sendMessage(Tags.FILE_DATA_CLOSE_TAG);
-									progressBar.setVisible(false);
-									lblReceive.setVisible(false);
-									isSendFile = false;
-									btnSendFile.setEnabled(true);
-									updateChat_notify("File sent complete");
-									inFileSend.close();
-								}
-								continueSendFile = true;
-							} catch (Exception e) {
-								e.printStackTrace();
-							}
-						}
-					}).start();
-				}
-			} while (sizeOfSend < sizeOfData);
-		}
-
-		private void showSaveFile() {
-			System.out.println("Chon vi tri luu file");
-			while (true) {
-				JFileChooser fileChooser = new JFileChooser();
-				fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
-				fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-				int result = fileChooser.showSaveDialog(frame);
-				if (result == JFileChooser.APPROVE_OPTION) {
-					File file = new File(fileChooser.getSelectedFile().getAbsolutePath() + "/" + nameFileReceive);
-					if (!file.exists()) {
-						try {
-							file.createNewFile();
-							Thread.sleep(1000);
-							InputStream input = new FileInputStream(URL_DIR + nameFileReceive);
-							OutputStream output = new FileOutputStream(file.getAbsolutePath());
-							frameChat.copyFileReceive(input, output, URL_DIR + nameFileReceive);
-						} catch (Exception e) {
-							Tags.show(frame, "Your file receive has error!!!", false);
-						}
-						break;
-					} else {
-						int resultContinue = Tags.show(frame, "File is exists. You want save file?", true);
-						if (resultContinue == 0)
-							continue;
-						else
-							break;
-					}
-				}
-			}
-		}
-
-		// void send Message
-		public synchronized void sendMessage(Object obj) throws Exception {
-			outPeer = new ObjectOutputStream(connect.getOutputStream());
-			// only send text
-			if (obj instanceof String) {
-				String message = obj.toString();
-				outPeer.writeObject(message);
-				outPeer.flush();
-				if (isReceiveFile)
-					isReceiveFile = false;
-			}
-			// send attach file
-			else if (obj instanceof DataFile) {
-				outPeer.writeObject(obj);
-				outPeer.flush();
-			}
-		}
-
-		public void stopChat() {
-			try {
-				connect.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-
-	}
+    private static final long serialVersionUID = 1L;
+    private static final String URL_DIR = System.getProperty("user.dir");
+    private static final int EMOJI_BUTTON_WIDTH = 44;
+    private static final int EMOJI_BUTTON_HEIGHT = 41;
+
+    // UI Components
+    private JPanel contentPane;
+    private JTextPane txtDisplayMessage;
+    private JTextField txtMessage;
+    private JButton btnSend, btnSendFile;
+    private JLabel lblReceive;
+    private JProgressBar progressBar;
+
+    // Connection & Data
+    private final Socket socketChat;
+    private final String nameUser;
+    private final String nameGuest;
+    private final ChatRoom chat;
+    private final ControllerChatFrame frameChat = new ControllerChatFrame();
+
+    private boolean isStop = false;
+    private int port;
+    private int portVoice;
+
+    public ChatFrame(String user, String guest, Socket socket, int port) throws Exception {
+        this(user, guest, socket, port, port);
+    }
+
+    public ChatFrame(String user, String guest, Socket socket, int port, int portVoice) throws Exception {
+        this.nameUser = user;
+        this.nameGuest = guest;
+        this.socketChat = socket;
+        this.port = port;
+        this.portVoice = portVoice;
+
+        this.chat = new ChatRoom(socketChat, nameUser, nameGuest);
+        this.chat.start();
+
+        EventQueue.invokeLater(this::initializeUI);
+        this.setVisible(true);
+    }
+
+    // ============ MESSAGE DISPLAY METHODS ============
+
+    public void updateChat_receive(String msg) {
+        String html = buildMessageHtml(msg, "left", "#f1f0f0", "black");
+        frameChat.appendToPane(txtDisplayMessage, html);
+    }
+
+    public void updateChat_send(String msg) {
+        String html = buildMessageHtml(msg, "right", "#0084ff", "white");
+        frameChat.appendToPane(txtDisplayMessage, html);
+    }
+
+    public void updateChat_notify(String msg) {
+        String html = buildMessageHtml(msg, "right", "#f1c40f", "white");
+        frameChat.appendToPane(txtDisplayMessage, html);
+    }
+
+    public void updateChat_send_Symbol(String msg) {
+        String html = "<table style='width: 100%;'>" +
+                "<tr align='right'>" +
+                "<td style='width: 59%;'></td>" +
+                "<td style='width: 40%;'>" + msg + "</td>" +
+                "</tr>" +
+                "</table>";
+        frameChat.appendToPane(txtDisplayMessage, html);
+    }
+
+    private String buildMessageHtml(String msg, String align, String bgColor, String textColor) {
+        String time = String.format("%d:%d", LocalDateTime.now().getHour(), LocalDateTime.now().getMinute());
+        // Escape % characters in message to prevent format string interpretation
+        String safeMsgToDisplay = msg.replace("%", "%%");
+
+        if ("left".equals(align)) {
+            // Messages on the left: message cell first, then empty space
+            return String.format(
+                    "<table style='color: %s; clear:both; width: 100%%;'>" +
+                            "<tr align='left'>" +
+                            "<td style='width: 40%%; background-color: %s;'>%s<br>%s</td>" +
+                            "<td style='width: 60%%;'></td>" +
+                            "</tr>" +
+                            "</table>",
+                    textColor, bgColor, time, safeMsgToDisplay);
+        } else {
+            // Messages on the right: empty space first, then message cell
+            return String.format(
+                    "<table style='color: %s; clear:both; width: 100%%;'>" +
+                            "<tr align='right'>" +
+                            "<td style='width: 60%%;'></td>" +
+                            "<td style='width: 40%%; background-color: %s;'>%s<br>%s</td>" +
+                            "</tr>" +
+                            "</table>",
+                    textColor, bgColor, time, safeMsgToDisplay);
+        }
+    }
+
+    // ============ UI INITIALIZATION ============
+
+    private void initializeUI() {
+        setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+        setupWindowCloseListener();
+        setupFrameProperties();
+
+        contentPane = new JPanel();
+        contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+        setContentPane(contentPane);
+        contentPane.setLayout(null);
+
+        addHeaderPanel();
+        addMessageDisplayPanel();
+        addEmojiPanel();
+        addMessageInputPanel();
+        addReceiveLabel();
+    }
+
+    private void setupWindowCloseListener() {
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent ev) {
+                closeChat();
+            }
+        });
+    }
+
+    private void closeChat() {
+        try {
+            isStop = true;
+            dispose();
+            chat.sendMessage(Tags.CHAT_CLOSE_TAG);
+            chat.stopChat();
+            System.gc();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    // hehe
+
+    private void setupFrameProperties() {
+        setResizable(false);
+        setTitle("BOX CHAT");
+        setBounds(100, 100, 576, 595);
+    }
+
+    private void addHeaderPanel() {
+        JPanel panel = new JPanel();
+        panel.setBackground(Color.LIGHT_GRAY);
+        panel.setBounds(0, 0, 573, 67);
+        contentPane.add(panel);
+        panel.setLayout(null);
+
+        // Logo
+        JLabel lblLogo = new JLabel();
+        lblLogo.setIcon(new ImageIcon(Objects.requireNonNull(
+                ChatFrame.class.getResource("/image/VKU64.png"))));
+        lblLogo.setBounds(20, 0, 66, 67);
+        panel.add(lblLogo);
+
+        // Guest name
+        JLabel nameLabel = new JLabel(nameGuest);
+        nameLabel.setFont(new Font("Tahoma", Font.PLAIN, 32));
+        nameLabel.setBounds(96, 10, 129, 38);
+        panel.add(nameLabel);
+
+        // Voice & Video buttons
+        addCallButton(panel, 403, "/image/phone48.png", "Voice call",
+                e -> System.out.println("voice call"));
+        addCallButton(panel, 474, "/image/videocall48.png", "Video call",
+                e -> System.out.println("Video call"));
+    }
+
+    private void addCallButton(JPanel panel, int x, String iconPath, String tooltip, ActionListener action) {
+        JButton btn = new JButton();
+        btn.setToolTipText(tooltip);
+        btn.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource(iconPath))));
+        btn.setBounds(x, 16, 32, 32);
+        btn.setBorder(new EmptyBorder(0, 0, 0, 0));
+        btn.setContentAreaFilled(false);
+        btn.addActionListener(action);
+        panel.add(btn);
+    }
+
+    private void addMessageDisplayPanel() {
+        JPanel panel = new JPanel();
+        panel.setBounds(0, 66, 562, 323);
+        panel.setLayout(null);
+        contentPane.add(panel);
+
+        txtDisplayMessage = new JTextPane();
+        txtDisplayMessage.setEditable(false);
+        txtDisplayMessage.setContentType("text/html");
+        txtDisplayMessage.setBackground(new Color(54, 57, 63));
+        txtDisplayMessage.setForeground(Color.WHITE);
+        txtDisplayMessage.setFont(new Font("Courier New", Font.PLAIN, 18));
+        frameChat.appendToPane(txtDisplayMessage, "<div style='background-color:white'></div>");
+
+        JScrollPane scrollPane = new JScrollPane(txtDisplayMessage);
+        scrollPane.setBounds(0, 0, 562, 323);
+        panel.add(scrollPane);
+    }
+
+    private void addEmojiPanel() {
+        JPanel panel = new JPanel();
+        panel.setBounds(0, 372, 573, 73);
+        contentPane.add(panel);
+        panel.setLayout(null);
+
+        addEmojiButton(panel, 31, "/image/like32.png", "like32");
+        addEmojiButton(panel, 144, "/image/love32.png", "love32");
+        addEmojiButton(panel, 265, "/image/smile32.png", "smile32");
+        addEmojiButton(panel, 378, "/image/sad32.png", "sad32");
+        addEmojiButton(panel, 495, "/image/img2.png", "img2");
+
+        progressBar = new JProgressBar();
+        progressBar.setBounds(10, 22, 540, 41);
+        progressBar.setVisible(false);
+        panel.add(progressBar);
+    }
+
+    private void addEmojiButton(JPanel panel, int x, String iconPath, String imageName) {
+        JButton btn = new JButton();
+        btn.setIcon(new ImageIcon(Objects.requireNonNull(ChatFrame.class.getResource(iconPath))));
+        btn.setBounds(x, 22, EMOJI_BUTTON_WIDTH, EMOJI_BUTTON_HEIGHT);
+        btn.setBorder(new EmptyBorder(0, 0, 0, 0));
+        btn.setContentAreaFilled(false);
+        btn.addActionListener(e -> sendEmoji(imageName));
+        panel.add(btn);
+    }
+
+    private void sendEmoji(String imageName) {
+        String msg = "<img src='" + ChatFrame.class.getResource("/image/" + imageName + ".png") + "'></img>";
+        try {
+            chat.sendMessage(sendMessage(msg));
+            updateChat_send_Symbol(msg);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void addMessageInputPanel() {
+        JPanel panel = new JPanel();
+        panel.setBounds(0, 446, 562, 73);
+        contentPane.add(panel);
+        panel.setLayout(null);
+
+        // Message input field
+        txtMessage = new JTextField();
+        txtMessage.setBounds(0, 5, 433, 45);
+        txtMessage.setColumns(10);
+        txtMessage.setFont(new Font("Courier New", Font.PLAIN, 18));
+        txtMessage.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    sendTextMessage();
+                }
+            }
+        });
+        panel.add(txtMessage);
+
+        // Send file button
+        btnSendFile = new JButton();
+        btnSendFile.setIcon(new ImageIcon(Objects.requireNonNull(
+                ChatFrame.class.getResource("/image/file32.png"))));
+        btnSendFile.setBounds(440, 10, 64, 53);
+        btnSendFile.setBorder(new EmptyBorder(0, 0, 0, 0));
+        btnSendFile.setContentAreaFilled(false);
+        btnSendFile.addActionListener(e -> selectAndSendFile());
+        panel.add(btnSendFile);
+
+        // Send message button
+        btnSend = new JButton();
+        btnSend.setBorder(new EmptyBorder(0, 0, 0, 0));
+        btnSend.setContentAreaFilled(false);
+        ImageIcon originalIcon = new ImageIcon(Objects.requireNonNull(
+                ChatFrame.class.getResource("/image/send32.png")));
+        Image scaledImage = originalIcon.getImage().getScaledInstance(36, 36, Image.SCALE_SMOOTH);
+        btnSend.setIcon(new ImageIcon(scaledImage));
+        btnSend.setBounds(498, 5, 64, 64);
+        btnSend.addActionListener(e -> sendTextMessage());
+        panel.add(btnSend);
+    }
+
+    private void sendTextMessage() {
+        String msg = txtMessage.getText().trim();
+        if (msg.isEmpty())
+            return;
+
+        txtMessage.setText("");
+        try {
+            chat.sendMessage(sendMessage(msg));
+            updateChat_send(msg);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void selectAndSendFile() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+
+        int result = fileChooser.showOpenDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            try {
+                chat.sendMessage(Encode.sendFile(selectedFile.getName()));
+                chat.sendFile(selectedFile);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void addReceiveLabel() {
+        lblReceive = new JLabel("");
+        lblReceive.setFont(new Font("Tahoma", Font.PLAIN, 18));
+        lblReceive.setBounds(47, 529, 465, 29);
+        lblReceive.setVisible(false);
+        contentPane.add(lblReceive);
+    }
+
+    // ============ CHAT ROOM THREAD ============
+
+    public class ChatRoom extends Thread {
+        private Socket connect;
+        private ObjectOutputStream outPeer;
+        private ObjectInputStream inPeer;
+        private boolean finishReceive = false;
+        private int sizeReceive = 0;
+        private String nameFileReceive = "";
+
+        public ChatRoom(Socket connection, String name, String guest) {
+            this.connect = connection;
+        }
+
+        @Override
+        public void run() {
+            System.out.println("Chat Room start");
+
+            try {
+                // Initialize both streams once at the start
+                // Important: Output stream must be created first to write stream header
+                outPeer = new ObjectOutputStream(connect.getOutputStream());
+                outPeer.flush();
+
+                inPeer = new ObjectInputStream(connect.getInputStream());
+
+                while (!isStop) {
+                    try {
+                        handleIncomingMessage();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        cleanupIncompleteFile();
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        private void handleIncomingMessage() throws Exception {
+            Object obj = inPeer.readObject();
+
+            if (obj instanceof String) {
+                String msgObj = obj.toString();
+                handleStringMessage(msgObj);
+            } else if (obj instanceof DataFile) {
+                DataFile data = (DataFile) obj;
+                sizeReceive++;
+            }
+        }
+
+        private void handleStringMessage(String msgObj) throws Exception {
+            if (msgObj.startsWith("<SESSION_ACCEPT>")) {
+                handleSessionAccept(msgObj);
+            } else if (msgObj.equals(Tags.CHAT_CLOSE_TAG)) {
+                handleChatClose();
+            } else if (Decode.checkFile(msgObj)) {
+                handleFileRequest(msgObj);
+            } else if (Decode.checkFeedBack(msgObj)) {
+                handleFileFeedback();
+            } else if (msgObj.equals(Tags.FILE_DATA_BEGIN_TAG)) {
+                handleFileDataBegin();
+            } else if (msgObj.equals(Tags.FILE_DATA_CLOSE_TAG)) {
+                handleFileDataClose();
+            } else {
+                String message = Decode.getMessage(msgObj);
+                if (message != null && !message.isEmpty()) {
+                    updateChat_receive(message);
+                } else {
+                    System.out.println("Failed to decode message: " + msgObj);
+                }
+            }
+        }
+
+        private void handleSessionAccept(String msgObj) throws Exception {
+            System.out.println("SESSION_ACCEPT received");
+            // Parse peers from message
+            String[] peers = msgObj.split("<PEER>");
+            for (String p : peers) {
+                if (p.contains("<PEER_NAME>") && p.contains("<IP>") && p.contains("<PORT>")) {
+                    String name = extractXmlValue(p, "PEER_NAME");
+                    String ip = extractXmlValue(p, "IP").replace("/", "").trim();
+                    int port = Integer.parseInt(extractXmlValue(p, "PORT"));
+                    System.out.println("Peer found: " + name + " @ " + ip + ":" + port);
+                }
+            }
+        }
+
+        private String extractXmlValue(String xml, String tag) {
+            return xml.split("<" + tag + ">")[1].split("</" + tag + ">")[0];
+        }
+
+        private void handleChatClose() throws Exception {
+            isStop = true;
+            Tags.show(ChatFrame.this, nameGuest + " This window will close.", false);
+            dispose();
+            chat.stopChat();
+        }
+
+        private void handleFileRequest(String msgObj) throws Exception {
+            isStop = true;
+            nameFileReceive = msgObj.substring(10, msgObj.length() - 11);
+            File fileReceive = new File(URL_DIR + "/" + nameFileReceive);
+
+            if (!fileReceive.exists()) {
+                fileReceive.createNewFile();
+            }
+
+            String ack = Tags.FILE_REQ_ACK_OPEN_TAG + Integer.toBinaryString(port) +
+                    Tags.FILE_REQ_ACK_CLOSE_TAG;
+            sendMessage(ack);
+        }
+
+        private void handleFileFeedback() throws Exception {
+            btnSendFile.setEnabled(false);
+            new Thread(() -> {
+                try {
+                    sendMessage(Tags.FILE_DATA_BEGIN_TAG);
+                    updateChat_notify("Sending file: " + nameFileReceive);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }).start();
+        }
+
+        private void handleFileDataBegin() throws Exception {
+            finishReceive = false;
+            lblReceive.setVisible(true);
+        }
+
+        private void handleFileDataClose() throws Exception {
+            updateChat_receive("File received: " + nameFileReceive + " (" + sizeReceive + " KB)");
+            sizeReceive = 0;
+            lblReceive.setVisible(false);
+
+            new Thread(this::showSaveFileDialog).start();
+            finishReceive = true;
+        }
+
+        private void cleanupIncompleteFile() {
+            File fileTemp = new File(URL_DIR + nameFileReceive);
+            if (fileTemp.exists() && !finishReceive) {
+                fileTemp.delete();
+            }
+        }
+
+        public void sendFile(File file) throws Exception {
+            btnSendFile.setEnabled(false);
+            lblReceive.setVisible(true);
+            progressBar.setVisible(true);
+
+            long fileSize = file.length();
+            int chunks = (int) ((fileSize + 1023) / 1024); // Ceiling division
+
+            if (chunks > Tags.MAX_MSG_SIZE / 1024) {
+                lblReceive.setText("File is too large...");
+                sendMessage(Tags.FILE_DATA_CLOSE_TAG);
+                btnSendFile.setEnabled(true);
+                lblReceive.setVisible(false);
+                return;
+            }
+
+            progressBar.setValue(0);
+            lblReceive.setText("Sending...");
+
+            try (FileInputStream fis = new FileInputStream(file)) {
+                byte[] buffer = new byte[1024];
+                int chunkCount = 0;
+
+                int bytesRead;
+                while ((bytesRead = fis.read(buffer)) != -1) {
+                    DataFile dataFile = new DataFile(bytesRead);
+                    System.arraycopy(buffer, 0, dataFile.data, 0, bytesRead);
+                    sendMessage(dataFile);
+
+                    chunkCount++;
+                    progressBar.setValue((chunkCount * 100) / chunks);
+                }
+
+                sendMessage(Tags.FILE_DATA_CLOSE_TAG);
+                updateChat_notify("File sent successfully");
+            } finally {
+                progressBar.setVisible(false);
+                lblReceive.setVisible(false);
+                btnSendFile.setEnabled(true);
+            }
+        }
+
+        private void showSaveFileDialog() {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
+            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+
+            int result = fileChooser.showSaveDialog(ChatFrame.this);
+            if (result == JFileChooser.APPROVE_OPTION) {
+                File destinationFile = new File(fileChooser.getSelectedFile().getAbsolutePath() +
+                        "/" + nameFileReceive);
+                if (!destinationFile.exists()) {
+                    try {
+                        Thread.sleep(1000);
+                        frameChat.copyFileReceive(
+                                new FileInputStream(URL_DIR + nameFileReceive),
+                                new FileOutputStream(destinationFile.getAbsolutePath()),
+                                URL_DIR + nameFileReceive);
+                    } catch (Exception e) {
+                        Tags.show(ChatFrame.this, "Error receiving file!", false);
+                    }
+                } else {
+                    int overwrite = Tags.show(ChatFrame.this, "File exists. Overwrite?", true);
+                    if (overwrite != 0)
+                        showSaveFileDialog(); // Retry if not confirmed
+                }
+            }
+        }
+
+        public synchronized void sendMessage(Object obj) throws Exception {
+            if (outPeer != null) {
+                outPeer.writeObject(obj);
+                outPeer.flush();
+            }
+        }
+
+        public void stopChat() {
+            try {
+                connect.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }

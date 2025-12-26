@@ -63,7 +63,6 @@ public class ServerCore {
 		connection.close();
 	}
 
-
 	// client connect to server
 	private boolean waitForConnection() throws Exception {
 		connection = server.accept();
@@ -91,10 +90,9 @@ public class ServerCore {
 	private void saveNewPeer(String user, String ip, int port) throws Exception {
 
 		Connection conn = DBUtil.getConnection();
-		String sql =
-				"INSERT INTO peers(username, ip, port, status) " +
-						"VALUES (?, ?, ?, 'ONLINE') " +
-						"ON DUPLICATE KEY UPDATE ip=?, port=?, status='ONLINE'";
+		String sql = "INSERT INTO peers(username, ip, port, status) " +
+				"VALUES (?, ?, ?, 'ONLINE') " +
+				"ON DUPLICATE KEY UPDATE ip=?, port=?, status='ONLINE'";
 
 		PreparedStatement ps = conn.prepareStatement(sql);
 		ps.setString(1, user);
@@ -136,15 +134,18 @@ public class ServerCore {
 							isExit = false;
 						} else {
 							obOutputClient = new ObjectOutputStream(connection.getOutputStream());
+							obOutputClient.flush(); // Flush to write stream header
 							obOutputClient.writeObject(sendSessionAccept());
 							obOutputClient.flush();
-							obOutputClient.close();
+							// Keep the stream open - do NOT close it
+							// The connection will handle multiple messages
 						}
 					} else {
 						obOutputClient = new ObjectOutputStream(connection.getOutputStream());
+						obOutputClient.flush();
 						obOutputClient.writeObject(Tags.SESSION_DENY_TAG);
 						obOutputClient.flush();
-						obOutputClient.close();
+						// Keep the stream open
 					}
 				}
 			} catch (Exception e) {
