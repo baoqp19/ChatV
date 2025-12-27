@@ -108,6 +108,16 @@ public final class Encode {
 	}
 
 	/**
+	 * Encodes a reaction targeting a specific displayed text.
+	 */
+	public static String sendReaction(String targetDisplayText, String emojiName) {
+		return Tags.CHAT_REACTION_OPEN_TAG +
+				Tags.CHAT_REACTION_TARGET_OPEN_TAG + targetDisplayText + Tags.CHAT_REACTION_TARGET_CLOSE_TAG +
+				Tags.CHAT_REACTION_EMOJI_OPEN_TAG + emojiName + Tags.CHAT_REACTION_EMOJI_CLOSE_TAG +
+				Tags.CHAT_REACTION_CLOSE_TAG;
+	}
+
+	/**
 	 * Creates a chat request message
 	 * 
 	 * @param name Target peer name

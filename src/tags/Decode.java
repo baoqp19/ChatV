@@ -51,6 +51,12 @@ public final class Decode {
 			Tags.TYPING_OPEN_TAG + Tags.TYPING_STATE_OPEN_TAG + "(ON|OFF)" + Tags.TYPING_STATE_CLOSE_TAG
 					+ Tags.TYPING_CLOSE_TAG);
 
+	private static final Pattern REACTION = Pattern.compile(
+			Tags.CHAT_REACTION_OPEN_TAG + Tags.CHAT_REACTION_TARGET_OPEN_TAG + ".*"
+					+ Tags.CHAT_REACTION_TARGET_CLOSE_TAG
+					+ Tags.CHAT_REACTION_EMOJI_OPEN_TAG + "[^<>]+" + Tags.CHAT_REACTION_EMOJI_CLOSE_TAG
+					+ Tags.CHAT_REACTION_CLOSE_TAG);
+
 	private static final Pattern FILE_NAME = Pattern.compile(
 			Tags.FILE_REQ_OPEN_TAG + ".*" + Tags.FILE_REQ_CLOSE_TAG);
 
@@ -190,6 +196,10 @@ public final class Decode {
 		return TYPING.matcher(msg).matches();
 	}
 
+	public static boolean isReaction(String msg) {
+		return REACTION.matcher(msg).matches();
+	}
+
 	public record EditPayload(String oldText, String newText) {
 	}
 
@@ -197,6 +207,9 @@ public final class Decode {
 	}
 
 	public record TypingPayload(boolean on) {
+	}
+
+	public record ReactionPayload(String target, String emoji) {
 	}
 
 	public static EditPayload getEditPayload(String msg) {
@@ -222,6 +235,15 @@ public final class Decode {
 		}
 		String state = extractContent(msg, Tags.TYPING_STATE_OPEN_TAG, Tags.TYPING_STATE_CLOSE_TAG);
 		return new TypingPayload("ON".equals(state));
+	}
+
+	public static ReactionPayload getReactionPayload(String msg) {
+		if (!isReaction(msg)) {
+			return null;
+		}
+		String target = extractContent(msg, Tags.CHAT_REACTION_TARGET_OPEN_TAG, Tags.CHAT_REACTION_TARGET_CLOSE_TAG);
+		String emoji = extractContent(msg, Tags.CHAT_REACTION_EMOJI_OPEN_TAG, Tags.CHAT_REACTION_EMOJI_CLOSE_TAG);
+		return new ReactionPayload(target, emoji);
 	}
 
 	/**

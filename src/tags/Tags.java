@@ -118,6 +118,14 @@ public final class Tags {
 	// Clear conversation tag
 	public static final String CHAT_CLEAR_TAG = "<CHAT_CLEAR />";
 
+	// Reaction tags
+	public static final String CHAT_REACTION_OPEN_TAG = "<CHAT_REACTION>";
+	public static final String CHAT_REACTION_CLOSE_TAG = "</CHAT_REACTION>";
+	public static final String CHAT_REACTION_TARGET_OPEN_TAG = "<TARGET>";
+	public static final String CHAT_REACTION_TARGET_CLOSE_TAG = "</TARGET>";
+	public static final String CHAT_REACTION_EMOJI_OPEN_TAG = "<EMOJI>";
+	public static final String CHAT_REACTION_EMOJI_CLOSE_TAG = "</EMOJI>";
+
 	/**
 	 * Shows a yes/no confirmation dialog
 	 * 

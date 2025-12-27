@@ -14,6 +14,8 @@ import java.net.Socket;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Objects;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -88,6 +90,10 @@ public class ChatFrame extends JFrame {
     // Track text message labels to support edits
     private final List<JLabel> messageLabels = new ArrayList<>();
 
+    // Reaction tracking per message label
+    private final Map<JLabel, JPanel> reactionStrips = new HashMap<>();
+    private final Map<JLabel, Map<String, Integer>> reactionCounts = new HashMap<>();
+
     // ============ MESSAGE DISPLAY METHODS ============
 
     public void updateChat_receive(String msg) {
@@ -141,6 +147,7 @@ public class ChatFrame extends JFrame {
         timeLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         bubble.add(Box.createVerticalStrut(6));
         bubble.add(timeLabel);
+        ensureReactionStrip(bubble, messageLabel);
 
         attachMessageEditor(bubble, messageLabel, "right".equals(align));
 
@@ -163,7 +170,7 @@ public class ChatFrame extends JFrame {
             public void mouseClicked(MouseEvent e) {
                 String current = messageLabel.getText();
 
-                Object[] options = { "Edit", "Delete", "Copy", "Cancel" };
+                Object[] options = { "Edit", "Delete", "React", "Copy", "Cancel" };
                 int choice = JOptionPane.showOptionDialog(ChatFrame.this,
                         "Choose action",
                         "Message actions",
@@ -205,6 +212,25 @@ public class ChatFrame extends JFrame {
 
                     deleteLocalMessage(messageLabel);
                 } else if (choice == 2) {
+                    String[] reactions = new String[] { "like32", "love32", "smile32", "sad32" };
+                    int rChoice = JOptionPane.showOptionDialog(ChatFrame.this,
+                            "Pick a reaction",
+                            "React",
+                            JOptionPane.DEFAULT_OPTION,
+                            JOptionPane.PLAIN_MESSAGE,
+                            null,
+                            reactions,
+                            reactions[0]);
+                    if (rChoice >= 0) {
+                        String emojiName = reactions[rChoice];
+                        applyReaction(messageLabel, emojiName);
+                        try {
+                            chat.sendMessage(Encode.sendReaction(stripEditedSuffix(current), emojiName));
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                } else if (choice == 3) {
                     String textToCopy = stripEditedSuffix(current);
                     try {
                         Toolkit.getDefaultToolkit().getSystemClipboard()
@@ -280,9 +306,70 @@ public class ChatFrame extends JFrame {
         if (container != null && container.getParent() == messagesPanel) {
             messagesPanel.remove(container);
         }
+        reactionStrips.remove(label);
+        reactionCounts.remove(label);
         messageLabels.remove(label);
         messagesPanel.revalidate();
         messagesPanel.repaint();
+    }
+
+    // ============ REACTIONS HELPERS (outer class) ============
+
+    private void ensureReactionStrip(JPanel bubble, JLabel messageLabel) {
+        if (reactionStrips.containsKey(messageLabel)) {
+            return;
+        }
+        JPanel strip = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        strip.setOpaque(false);
+        strip.setVisible(false);
+        bubble.add(Box.createVerticalStrut(4));
+        bubble.add(strip);
+        reactionStrips.put(messageLabel, strip);
+        reactionCounts.put(messageLabel, new HashMap<>());
+    }
+
+    private void applyReaction(JLabel label, String emojiName) {
+        JPanel strip = reactionStrips.get(label);
+        if (strip == null) {
+            // Attempt to attach if missing
+            Container bubble = label.getParent();
+            if (bubble instanceof JPanel) {
+                ensureReactionStrip((JPanel) bubble, label);
+                strip = reactionStrips.get(label);
+            }
+        }
+        Map<String, Integer> counts = reactionCounts.computeIfAbsent(label, k -> new HashMap<>());
+        counts.put(emojiName, counts.getOrDefault(emojiName, 0) + 1);
+        updateReactionUI(label);
+    }
+
+    private void updateReactionUI(JLabel label) {
+        JPanel strip = reactionStrips.get(label);
+        if (strip == null)
+            return;
+        strip.removeAll();
+        Map<String, Integer> counts = reactionCounts.get(label);
+        if (counts == null || counts.isEmpty()) {
+            strip.setVisible(false);
+            strip.revalidate();
+            strip.repaint();
+            return;
+        }
+        strip.setVisible(true);
+        for (Map.Entry<String, Integer> e : counts.entrySet()) {
+            ImageIcon icon = getEmojiImage(e.getKey());
+            if (icon != null) {
+                Image scaled = icon.getImage().getScaledInstance(18, 18, Image.SCALE_SMOOTH);
+                JLabel chip = new JLabel(new ImageIcon(scaled));
+                chip.setText(" " + e.getValue());
+                chip.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+                chip.setForeground(new Color(60, 60, 65));
+                chip.setOpaque(false);
+                strip.add(chip);
+            }
+        }
+        strip.revalidate();
+        strip.repaint();
     }
 
     // ============ UI INITIALIZATION ============
@@ -639,6 +726,7 @@ public class ChatFrame extends JFrame {
         timeLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         bubble.add(Box.createVerticalStrut(6));
         bubble.add(timeLabel);
+        ensureReactionStrip(bubble, messageLabel);
 
         attachMessageEditor(bubble, messageLabel, "right".equals(align));
 
@@ -1020,6 +1108,8 @@ public class ChatFrame extends JFrame {
                 handleEditMessage(msgObj);
             } else if (Decode.isTyping(msgObj)) {
                 handleTypingMessage(msgObj);
+            } else if (Decode.isReaction(msgObj)) {
+                handleReactionMessage(msgObj);
             } else if (Decode.isDelete(msgObj)) {
                 handleDeleteMessage(msgObj);
             } else if (msgObj.equals(Tags.CHAT_CLEAR_TAG)) {
@@ -1159,6 +1249,24 @@ public class ChatFrame extends JFrame {
             MessageDAO.deleteMessage(nameGuest, nameUser, payload.text());
         }
 
+        private void handleReactionMessage(String msgObj) {
+            Decode.ReactionPayload payload = Decode.getReactionPayload(msgObj);
+            if (payload == null) {
+                return;
+            }
+            SwingUtilities.invokeLater(() -> {
+                // Find label by target text
+                for (JLabel label : new ArrayList<>(messageLabels)) {
+                    String normalized = stripEditedSuffix(label.getText());
+                    if (normalized.equals(payload.target())) {
+                        applyReaction(label, payload.emoji());
+                        return;
+                    }
+                }
+                updateChat_notify(nameGuest + " reacted: " + payload.emoji());
+            });
+        }
+
         private void handleClearChat() {
             SwingUtilities.invokeLater(() -> {
                 messageLabels.clear();
@@ -1176,6 +1284,8 @@ public class ChatFrame extends JFrame {
             }
             SwingUtilities.invokeLater(() -> setPeerTyping(payload.on()));
         }
+
+        // (moved) reaction helpers live in outer class
 
         private void handleChatClose() throws Exception {
             isStop = true;
@@ -1337,7 +1447,5 @@ public class ChatFrame extends JFrame {
                 e.printStackTrace();
             }
         }
-
     }
-
 }
