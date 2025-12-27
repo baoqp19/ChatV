@@ -118,4 +118,27 @@ public final class MessageDAO {
             }
         }
     }
+
+    /**
+     * Updates the most recent message matching the provided
+     * sender/receiver/content.
+     * Falls back silently if nothing matches.
+     */
+    public static void updateMessage(String sender, String receiver, String oldContent, String newContent) {
+        ensureSchema();
+
+        String sql = "UPDATE " + TABLE + " SET content = ? WHERE id IN (" +
+                "SELECT id FROM (SELECT id FROM " + TABLE +
+                " WHERE sender = ? AND receiver = ? AND content = ? ORDER BY id DESC LIMIT 1) AS t)";
+
+        try (Connection con = DBUtil.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, newContent);
+            ps.setString(2, sender);
+            ps.setString(3, receiver);
+            ps.setString(4, oldContent);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Failed to update message content in MySQL", e);
+        }
+    }
 }

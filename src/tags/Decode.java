@@ -38,6 +38,11 @@ public final class Decode {
 	private static final Pattern MESSAGE = Pattern.compile(
 			Tags.CHAT_MSG_OPEN_TAG + ".*" + Tags.CHAT_MSG_CLOSE_TAG);
 
+	private static final Pattern EDIT = Pattern.compile(
+			Tags.CHAT_EDIT_OPEN_TAG + Tags.CHAT_EDIT_OLD_OPEN_TAG + ".*" + Tags.CHAT_EDIT_OLD_CLOSE_TAG
+					+ Tags.CHAT_EDIT_NEW_OPEN_TAG + ".*" + Tags.CHAT_EDIT_NEW_CLOSE_TAG
+					+ Tags.CHAT_EDIT_CLOSE_TAG);
+
 	private static final Pattern FILE_NAME = Pattern.compile(
 			Tags.FILE_REQ_OPEN_TAG + ".*" + Tags.FILE_REQ_CLOSE_TAG);
 
@@ -163,6 +168,22 @@ public final class Decode {
 			return extractContent(msg, Tags.CHAT_MSG_OPEN_TAG, Tags.CHAT_MSG_CLOSE_TAG);
 		}
 		return null;
+	}
+
+	public static boolean isEdit(String msg) {
+		return EDIT.matcher(msg).matches();
+	}
+
+	public record EditPayload(String oldText, String newText) {
+	}
+
+	public static EditPayload getEditPayload(String msg) {
+		if (!isEdit(msg)) {
+			return null;
+		}
+		String oldText = extractContent(msg, Tags.CHAT_EDIT_OLD_OPEN_TAG, Tags.CHAT_EDIT_OLD_CLOSE_TAG);
+		String newText = extractContent(msg, Tags.CHAT_EDIT_NEW_OPEN_TAG, Tags.CHAT_EDIT_NEW_CLOSE_TAG);
+		return new EditPayload(oldText, newText);
 	}
 
 	/**

@@ -95,6 +95,14 @@ public final class Tags {
 	public static final String MSG_OPEN_TAG = "<msg>";
 	public static final String MSG_CLOSE_TAG = "</msg>";
 
+	// Edit message tags
+	public static final String CHAT_EDIT_OPEN_TAG = "<CHAT_EDIT>";
+	public static final String CHAT_EDIT_CLOSE_TAG = "</CHAT_EDIT>";
+	public static final String CHAT_EDIT_OLD_OPEN_TAG = "<OLD>";
+	public static final String CHAT_EDIT_OLD_CLOSE_TAG = "</OLD>";
+	public static final String CHAT_EDIT_NEW_OPEN_TAG = "<NEW>";
+	public static final String CHAT_EDIT_NEW_CLOSE_TAG = "</NEW>";
+
 	/**
 	 * Shows a yes/no confirmation dialog
 	 * 

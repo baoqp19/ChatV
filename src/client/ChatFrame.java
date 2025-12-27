@@ -12,6 +12,8 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.Socket;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -82,6 +84,9 @@ public class ChatFrame extends JFrame {
     // Store reference to the messages panel
     private JPanel messagesPanel;
 
+    // Track text message labels to support edits
+    private final List<JLabel> messageLabels = new ArrayList<>();
+
     // ============ MESSAGE DISPLAY METHODS ============
 
     public void updateChat_receive(String msg) {
@@ -127,6 +132,8 @@ public class ChatFrame extends JFrame {
         messageLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         bubble.add(messageLabel);
 
+        trackMessageLabel(messageLabel);
+
         JLabel timeLabel = new JLabel(time);
         timeLabel.setForeground(new Color(102, 102, 102));
         timeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
@@ -154,23 +161,61 @@ public class ChatFrame extends JFrame {
             @Override
             public void mouseClicked(MouseEvent e) {
                 String current = messageLabel.getText();
-                String updated = JOptionPane.showInputDialog(ChatFrame.this, "Edit message", current);
+                String updated = JOptionPane.showInputDialog(ChatFrame.this, "Edit message",
+                        stripEditedSuffix(current));
                 if (updated == null) {
                     return; // Cancel pressed
                 }
 
                 updated = updated.trim();
-                if (updated.isEmpty() || updated.equals(current)) {
+                if (updated.isEmpty() || updated.equals(stripEditedSuffix(current))) {
                     return; // Nothing to change
                 }
 
-                messageLabel.setText(updated + " (edited)");
+                String newDisplay = updated + " (edited)";
+                messageLabel.setText(newDisplay);
+
+                try {
+                    chat.sendMessage(Encode.sendEdit(current, updated));
+                    MessageDAO.updateMessage(nameUser, nameGuest, current, newDisplay);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
             }
         };
 
         bubble.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         bubble.addMouseListener(editor);
         messageLabel.addMouseListener(editor);
+    }
+
+    private void trackMessageLabel(JLabel label) {
+        messageLabels.add(label);
+    }
+
+    private String stripEditedSuffix(String text) {
+        if (text == null) {
+            return "";
+        }
+        String suffix = " (edited)";
+        if (text.endsWith(suffix)) {
+            return text.substring(0, text.length() - suffix.length());
+        }
+        return text;
+    }
+
+    private boolean updateLabelText(String oldDisplay, String newDisplay) {
+        String normalizedOld = stripEditedSuffix(oldDisplay);
+        for (JLabel label : messageLabels) {
+            String currentNormalized = stripEditedSuffix(label.getText());
+            if (currentNormalized.equals(normalizedOld)) {
+                label.setText(newDisplay);
+                label.revalidate();
+                label.repaint();
+                return true;
+            }
+        }
+        return false;
     }
 
     // ============ UI INITIALIZATION ============
@@ -435,6 +480,8 @@ public class ChatFrame extends JFrame {
         messageLabel.setMaximumSize(new Dimension(300, 50));
         messageLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         bubble.add(messageLabel);
+
+        trackMessageLabel(messageLabel);
 
         JLabel timeLabel = new JLabel(time);
         timeLabel.setForeground(new Color(102, 102, 102));
@@ -819,6 +866,8 @@ public class ChatFrame extends JFrame {
                 handleSessionAccept(msgObj);
             } else if (msgObj.equals(Tags.CHAT_CLOSE_TAG)) {
                 handleChatClose();
+            } else if (Decode.isEdit(msgObj)) {
+                handleEditMessage(msgObj);
             } else if (msgObj.equals("<VIDEO_CALL_START>")) {
                 handleVideoCallStart();
             } else if (msgObj.equals("<VIDEO_CALL_END>")) {
@@ -918,6 +967,24 @@ public class ChatFrame extends JFrame {
                     updateChat_notify("📹 " + nameGuest + " ended the video call");
                 }
             });
+        }
+
+        private void handleEditMessage(String msgObj) {
+            Decode.EditPayload payload = Decode.getEditPayload(msgObj);
+            if (payload == null) {
+                return;
+            }
+
+            String newDisplay = payload.newText() + " (edited)";
+
+            SwingUtilities.invokeLater(() -> {
+                boolean updated = updateLabelText(payload.oldText(), newDisplay);
+                if (!updated) {
+                    updateChat_notify(nameGuest + " edited a message: " + payload.newText());
+                }
+            });
+
+            MessageDAO.updateMessage(nameGuest, nameUser, payload.oldText(), newDisplay);
         }
 
         private void handleChatClose() throws Exception {

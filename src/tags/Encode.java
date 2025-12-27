@@ -73,6 +73,16 @@ public final class Encode {
 	}
 
 	/**
+	 * Encodes an edit message containing old displayed text and new raw text.
+	 */
+	public static String sendEdit(String oldDisplayedText, String newText) {
+		return Tags.CHAT_EDIT_OPEN_TAG +
+				Tags.CHAT_EDIT_OLD_OPEN_TAG + oldDisplayedText + Tags.CHAT_EDIT_OLD_CLOSE_TAG +
+				Tags.CHAT_EDIT_NEW_OPEN_TAG + newText + Tags.CHAT_EDIT_NEW_CLOSE_TAG +
+				Tags.CHAT_EDIT_CLOSE_TAG;
+	}
+
+	/**
 	 * Creates a chat request message
 	 * 
 	 * @param name Target peer name
