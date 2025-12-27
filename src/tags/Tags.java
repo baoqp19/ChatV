@@ -109,6 +109,15 @@ public final class Tags {
 	public static final String CHAT_DELETE_BODY_OPEN_TAG = "<BODY>";
 	public static final String CHAT_DELETE_BODY_CLOSE_TAG = "</BODY>";
 
+	// Typing indicator tags
+	public static final String TYPING_OPEN_TAG = "<TYPING>";
+	public static final String TYPING_CLOSE_TAG = "</TYPING>";
+	public static final String TYPING_STATE_OPEN_TAG = "<STATE>"; // ON or OFF
+	public static final String TYPING_STATE_CLOSE_TAG = "</STATE>";
+
+	// Clear conversation tag
+	public static final String CHAT_CLEAR_TAG = "<CHAT_CLEAR />";
+
 	/**
 	 * Shows a yes/no confirmation dialog
 	 * 

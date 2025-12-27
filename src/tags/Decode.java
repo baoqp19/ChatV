@@ -47,6 +47,10 @@ public final class Decode {
 			Tags.CHAT_DELETE_OPEN_TAG + Tags.CHAT_DELETE_BODY_OPEN_TAG + ".*" + Tags.CHAT_DELETE_BODY_CLOSE_TAG
 					+ Tags.CHAT_DELETE_CLOSE_TAG);
 
+	private static final Pattern TYPING = Pattern.compile(
+			Tags.TYPING_OPEN_TAG + Tags.TYPING_STATE_OPEN_TAG + "(ON|OFF)" + Tags.TYPING_STATE_CLOSE_TAG
+					+ Tags.TYPING_CLOSE_TAG);
+
 	private static final Pattern FILE_NAME = Pattern.compile(
 			Tags.FILE_REQ_OPEN_TAG + ".*" + Tags.FILE_REQ_CLOSE_TAG);
 
@@ -182,10 +186,17 @@ public final class Decode {
 		return DELETE.matcher(msg).matches();
 	}
 
+	public static boolean isTyping(String msg) {
+		return TYPING.matcher(msg).matches();
+	}
+
 	public record EditPayload(String oldText, String newText) {
 	}
 
 	public record DeletePayload(String text) {
+	}
+
+	public record TypingPayload(boolean on) {
 	}
 
 	public static EditPayload getEditPayload(String msg) {
@@ -203,6 +214,14 @@ public final class Decode {
 		}
 		String text = extractContent(msg, Tags.CHAT_DELETE_BODY_OPEN_TAG, Tags.CHAT_DELETE_BODY_CLOSE_TAG);
 		return new DeletePayload(text);
+	}
+
+	public static TypingPayload getTypingPayload(String msg) {
+		if (!isTyping(msg)) {
+			return null;
+		}
+		String state = extractContent(msg, Tags.TYPING_STATE_OPEN_TAG, Tags.TYPING_STATE_CLOSE_TAG);
+		return new TypingPayload("ON".equals(state));
 	}
 
 	/**

@@ -161,4 +161,22 @@ public final class MessageDAO {
             LOGGER.log(Level.WARNING, "Failed to delete message in MySQL", e);
         }
     }
+
+    /**
+     * Deletes the entire conversation between two users.
+     */
+    public static void deleteConversation(String userA, String userB) {
+        ensureSchema();
+
+        String sql = "DELETE FROM " + TABLE + " WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)";
+        try (Connection con = DBUtil.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, userA);
+            ps.setString(2, userB);
+            ps.setString(3, userB);
+            ps.setString(4, userA);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Failed to delete conversation in MySQL", e);
+        }
+    }
 }

@@ -92,6 +92,22 @@ public final class Encode {
 	}
 
 	/**
+	 * Encodes typing indicator state.
+	 */
+	public static String sendTyping(boolean on) {
+		return Tags.TYPING_OPEN_TAG +
+				Tags.TYPING_STATE_OPEN_TAG + (on ? "ON" : "OFF") + Tags.TYPING_STATE_CLOSE_TAG +
+				Tags.TYPING_CLOSE_TAG;
+	}
+
+	/**
+	 * Encodes a clear conversation event.
+	 */
+	public static String sendClearChat() {
+		return Tags.CHAT_CLEAR_TAG;
+	}
+
+	/**
 	 * Creates a chat request message
 	 * 
 	 * @param name Target peer name

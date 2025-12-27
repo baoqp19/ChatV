@@ -59,6 +59,7 @@ public class ChatFrame extends JFrame {
     private JFrame videoFrame;
     private JLabel localVideoLabel;
     private JLabel remoteVideoLabel;
+    private JLabel typingLabel;
 
     public ChatFrame(String user, String guest, Socket socket, int port) throws Exception {
         this(user, guest, socket, port, port);
@@ -162,7 +163,7 @@ public class ChatFrame extends JFrame {
             public void mouseClicked(MouseEvent e) {
                 String current = messageLabel.getText();
 
-                Object[] options = { "Edit", "Delete", "Cancel" };
+                Object[] options = { "Edit", "Delete", "Copy", "Cancel" };
                 int choice = JOptionPane.showOptionDialog(ChatFrame.this,
                         "Choose action",
                         "Message actions",
@@ -203,6 +204,15 @@ public class ChatFrame extends JFrame {
                     }
 
                     deleteLocalMessage(messageLabel);
+                } else if (choice == 2) {
+                    String textToCopy = stripEditedSuffix(current);
+                    try {
+                        Toolkit.getDefaultToolkit().getSystemClipboard()
+                                .setContents(new java.awt.datatransfer.StringSelection(textToCopy), null);
+                        updateChat_notify("Copied to clipboard");
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
                 }
             }
         };
@@ -377,6 +387,14 @@ public class ChatFrame extends JFrame {
 
         // Keep txtDisplayMessage for backward compatibility
         txtDisplayMessage = new JTextPane();
+
+        // Typing indicator below message list
+        typingLabel = new JLabel("");
+        typingLabel.setForeground(new Color(0, 132, 255));
+        typingLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        typingLabel.setBounds(10, 324, 300, 20);
+        typingLabel.setVisible(false);
+        panel.add(typingLabel);
     }
 
     private void addEmojiPanel() {
@@ -440,6 +458,12 @@ public class ChatFrame extends JFrame {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     sendTextMessage();
                 }
+                handleTypingKeyPress();
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                scheduleTypingStop();
             }
         });
         panel.add(txtMessage);
@@ -465,6 +489,75 @@ public class ChatFrame extends JFrame {
         btnSend.setBounds(500, 5, 60, 60);
         btnSend.addActionListener(e -> sendTextMessage());
         panel.add(btnSend);
+
+        // Clear chat button
+        JButton btnClear = new JButton("Clear");
+        btnClear.setBounds(410, 52, 70, 20);
+        btnClear.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        btnClear.addActionListener(e -> clearConversation());
+        panel.add(btnClear);
+    }
+
+    // Typing indicator: debounce logic
+    private boolean typingOnSent = false;
+    private javax.swing.Timer typingTimer;
+
+    private void handleTypingKeyPress() {
+        try {
+            if (!typingOnSent) {
+                chat.sendMessage(Encode.sendTyping(true));
+                typingOnSent = true;
+            }
+            scheduleTypingStop();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private void scheduleTypingStop() {
+        if (typingTimer != null && typingTimer.isRunning()) {
+            typingTimer.restart();
+            return;
+        }
+        typingTimer = new javax.swing.Timer(900, ev -> {
+            try {
+                chat.sendMessage(Encode.sendTyping(false));
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+            typingOnSent = false;
+            typingTimer.stop();
+        });
+        typingTimer.setRepeats(false);
+        typingTimer.start();
+    }
+
+    private void setPeerTyping(boolean on) {
+        typingLabel.setText(on ? (nameGuest + " is typing...") : "");
+        typingLabel.setVisible(on);
+    }
+
+    private void clearConversation() {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Clear this conversation for you and notify peer?",
+                "Clear Conversation",
+                JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        // Local UI clear
+        messageLabels.clear();
+        messagesPanel.removeAll();
+        messagesPanel.revalidate();
+        messagesPanel.repaint();
+        // DB clear
+        MessageDAO.deleteConversation(nameUser, nameGuest);
+        // Notify peer
+        try {
+            chat.sendMessage(Encode.sendClearChat());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
 
     private void sendTextMessage() {
@@ -925,8 +1018,12 @@ public class ChatFrame extends JFrame {
                 handleChatClose();
             } else if (Decode.isEdit(msgObj)) {
                 handleEditMessage(msgObj);
+            } else if (Decode.isTyping(msgObj)) {
+                handleTypingMessage(msgObj);
             } else if (Decode.isDelete(msgObj)) {
                 handleDeleteMessage(msgObj);
+            } else if (msgObj.equals(Tags.CHAT_CLEAR_TAG)) {
+                handleClearChat();
             } else if (msgObj.equals("<VIDEO_CALL_START>")) {
                 handleVideoCallStart();
             } else if (msgObj.equals("<VIDEO_CALL_END>")) {
@@ -1060,6 +1157,24 @@ public class ChatFrame extends JFrame {
             });
 
             MessageDAO.deleteMessage(nameGuest, nameUser, payload.text());
+        }
+
+        private void handleClearChat() {
+            SwingUtilities.invokeLater(() -> {
+                messageLabels.clear();
+                messagesPanel.removeAll();
+                messagesPanel.revalidate();
+                messagesPanel.repaint();
+            });
+            MessageDAO.deleteConversation(nameGuest, nameUser);
+        }
+
+        private void handleTypingMessage(String msgObj) {
+            Decode.TypingPayload payload = Decode.getTypingPayload(msgObj);
+            if (payload == null) {
+                return;
+            }
+            SwingUtilities.invokeLater(() -> setPeerTyping(payload.on()));
         }
 
         private void handleChatClose() throws Exception {
