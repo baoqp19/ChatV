@@ -4,7 +4,9 @@
       <root url="jar://$PROJECT_DIR$/activation-0.X.jar!/" />
       <root url="jar://$PROJECT_DIR$/javafx-0.2-sources.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$PROJECT_DIR$/../../../webcam-capture-0.3.12-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES />
   </library>
 </component>

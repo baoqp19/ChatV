@@ -11,7 +11,6 @@ import java.io.*;
 import java.net.Socket;
 import java.time.LocalDateTime;
 import java.util.Objects;
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
@@ -47,6 +46,15 @@ public class ChatFrame extends JFrame {
     private boolean isStop = false;
     private int port;
     private int portVoice;
+
+    // Video call state
+    private VideoSendThread videoSendThread;
+    private VideoReceiveThread videoReceiveThread;
+    private java.net.DatagramSocket videoSocket;
+    private boolean isVideoCallActive = false;
+    private JFrame videoFrame;
+    private JLabel localVideoLabel;
+    private JLabel remoteVideoLabel;
 
     public ChatFrame(String user, String guest, Socket socket, int port) throws Exception {
         this(user, guest, socket, port, port);
@@ -197,11 +205,9 @@ public class ChatFrame extends JFrame {
         nameLabel.setBounds(96, 10, 129, 38);
         panel.add(nameLabel);
 
-        // Voice & Video buttons
-        addCallButton(panel, 403, "/image/phone48.png", "Voice call",
-                e -> System.out.println("voice call"));
+        // Video call button
         addCallButton(panel, 474, "/image/videocall48.png", "Video call",
-                e -> System.out.println("Video call"));
+                e -> startVideoCall());
     }
 
     private void addCallButton(JPanel panel, int x, String iconPath, String tooltip, ActionListener action) {
@@ -305,7 +311,7 @@ public class ChatFrame extends JFrame {
         btnSendFile = new JButton();
         btnSendFile.setIcon(new ImageIcon(Objects.requireNonNull(
                 ChatFrame.class.getResource("/image/file32.png"))));
-        btnSendFile.setBounds(440, 10, 64, 53);
+        btnSendFile.setBounds(440, 10, 50, 45);
         btnSendFile.setBorder(new EmptyBorder(0, 0, 0, 0));
         btnSendFile.setContentAreaFilled(false);
         btnSendFile.addActionListener(e -> selectAndSendFile());
@@ -319,7 +325,7 @@ public class ChatFrame extends JFrame {
                 ChatFrame.class.getResource("/image/send32.png")));
         Image scaledImage = originalIcon.getImage().getScaledInstance(36, 36, Image.SCALE_SMOOTH);
         btnSend.setIcon(new ImageIcon(scaledImage));
-        btnSend.setBounds(498, 5, 64, 64);
+        btnSend.setBounds(500, 5, 60, 60);
         btnSend.addActionListener(e -> sendTextMessage());
         panel.add(btnSend);
     }
@@ -553,6 +559,158 @@ public class ChatFrame extends JFrame {
         contentPane.add(lblReceive);
     }
 
+    // ============ VIDEO CALL METHODS ============
+
+    private void startVideoCall() {
+        if (isVideoCallActive) {
+            stopVideoCall();
+            return;
+        }
+
+        try {
+            // Create video call window
+            createVideoWindow();
+
+            // Notify the peer that we're initiating a video call
+            String videoCallMsg = "<VIDEO_CALL_START>";
+            chat.sendMessage(videoCallMsg);
+
+            // Initialize video socket (use different port than voice)
+            int videoPort = portVoice + 1;
+            videoSocket = new java.net.DatagramSocket(videoPort);
+
+            // Start sending and receiving video
+            videoSendThread = new VideoSendThread(videoSocket,
+                    socketChat.getInetAddress(), videoPort, localVideoLabel);
+            videoReceiveThread = new VideoReceiveThread(videoSocket, remoteVideoLabel);
+
+            // Set error callbacks
+            videoSendThread.setErrorCallback(error -> {
+                SwingUtilities.invokeLater(() -> {
+                    updateChat_notify("❌ Camera error: " + error);
+                    stopVideoCall();
+                });
+            });
+
+            videoReceiveThread.setErrorCallback(error -> {
+                SwingUtilities.invokeLater(() -> {
+                    updateChat_notify("❌ Video receive error: " + error);
+                    stopVideoCall();
+                });
+            });
+
+            videoSendThread.start();
+            videoReceiveThread.start();
+
+            isVideoCallActive = true;
+            updateChat_notify("📹 Video call started with " + nameGuest);
+            System.out.println("[ChatFrame] Video call initiated");
+        } catch (Exception e) {
+            e.printStackTrace();
+            updateChat_notify("❌ Failed to start video call: " + e.getMessage());
+            if (videoFrame != null) {
+                videoFrame.dispose();
+            }
+        }
+    }
+
+    private void stopVideoCall() {
+        try {
+            if (videoSendThread != null) {
+                videoSendThread.stopVideo();
+                videoSendThread = null;
+            }
+
+            if (videoReceiveThread != null) {
+                videoReceiveThread.stopVideo();
+                videoReceiveThread = null;
+            }
+
+            if (videoSocket != null && !videoSocket.isClosed()) {
+                videoSocket.close();
+                videoSocket = null;
+            }
+
+            if (videoFrame != null) {
+                videoFrame.dispose();
+                videoFrame = null;
+            }
+
+            isVideoCallActive = false;
+            updateChat_notify("📹 Video call ended");
+
+            // Notify peer that call is ended
+            chat.sendMessage("<VIDEO_CALL_END>");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void createVideoWindow() {
+        videoFrame = new JFrame("Video Call with " + nameGuest);
+        videoFrame.setSize(760, 560);
+        videoFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        videoFrame.setLayout(new BorderLayout());
+
+        // Simple main panel
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(new Color(35, 35, 40));
+        videoFrame.add(mainPanel, BorderLayout.CENTER);
+
+        // Remote video area
+        JPanel remotePanel = new JPanel(null);
+        remotePanel.setPreferredSize(new Dimension(740, 460));
+        remotePanel.setBackground(new Color(25, 25, 30));
+        remotePanel.setBorder(BorderFactory.createLineBorder(new Color(70, 70, 80), 2));
+        mainPanel.add(remotePanel, BorderLayout.CENTER);
+
+        remoteVideoLabel = new JLabel();
+        remoteVideoLabel.setBounds(0, 0, 740, 460);
+        remoteVideoLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        remoteVideoLabel.setVerticalAlignment(SwingConstants.CENTER);
+        remoteVideoLabel.setForeground(new Color(200, 200, 210));
+        remoteVideoLabel.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        remoteVideoLabel.setText("Connecting to " + nameGuest + "...");
+        remotePanel.add(remoteVideoLabel);
+
+        // Local preview at bottom-right
+        localVideoLabel = new JLabel();
+        localVideoLabel.setBounds(740 - 190, 460 - 140, 180, 120);
+        localVideoLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        localVideoLabel.setVerticalAlignment(SwingConstants.CENTER);
+        localVideoLabel.setForeground(new Color(220, 220, 220));
+        localVideoLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        localVideoLabel.setBorder(BorderFactory.createLineBorder(new Color(100, 150, 220), 2));
+        localVideoLabel.setText("You");
+        localVideoLabel.setOpaque(true);
+        localVideoLabel.setBackground(new Color(30, 30, 35));
+        remotePanel.add(localVideoLabel);
+
+        // Bottom controls
+        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 10));
+        controlPanel.setBackground(new Color(35, 35, 40));
+        mainPanel.add(controlPanel, BorderLayout.SOUTH);
+
+        JButton endCallButton = new JButton("End Call");
+        endCallButton.setPreferredSize(new Dimension(140, 40));
+        endCallButton.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        endCallButton.setBackground(new Color(210, 60, 60));
+        endCallButton.setForeground(Color.WHITE);
+        endCallButton.setFocusPainted(false);
+        endCallButton.addActionListener(e -> stopVideoCall());
+        controlPanel.add(endCallButton);
+
+        videoFrame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                stopVideoCall();
+            }
+        });
+
+        videoFrame.setLocationRelativeTo(this);
+        videoFrame.setVisible(true);
+    }
+
     // ============ CHAT ROOM THREAD ============
 
     public class ChatRoom extends Thread {
@@ -624,6 +782,10 @@ public class ChatFrame extends JFrame {
                 handleSessionAccept(msgObj);
             } else if (msgObj.equals(Tags.CHAT_CLOSE_TAG)) {
                 handleChatClose();
+            } else if (msgObj.equals("<VIDEO_CALL_START>")) {
+                handleVideoCallStart();
+            } else if (msgObj.equals("<VIDEO_CALL_END>")) {
+                handleVideoCallEnd();
             } else if (Decode.checkFile(msgObj)) {
                 handleFileRequest(msgObj);
             } else if (Decode.checkFeedBack(msgObj)) {
@@ -659,6 +821,66 @@ public class ChatFrame extends JFrame {
 
         private String extractXmlValue(String xml, String tag) {
             return xml.split("<" + tag + ">")[1].split("</" + tag + ">")[0];
+        }
+
+        private void handleVideoCallStart() {
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    if (!isVideoCallActive) {
+                        // Auto-accept video call from peer
+                        updateChat_notify("📹 " + nameGuest + " is calling with video...");
+
+                        // Create video call window
+                        createVideoWindow();
+
+                        // Initialize video socket
+                        int videoPort = portVoice + 1;
+                        videoSocket = new java.net.DatagramSocket(videoPort);
+
+                        // Start sending and receiving video
+                        videoSendThread = new VideoSendThread(videoSocket,
+                                socketChat.getInetAddress(), videoPort, localVideoLabel);
+                        videoReceiveThread = new VideoReceiveThread(videoSocket, remoteVideoLabel);
+
+                        // Set error callbacks
+                        videoSendThread.setErrorCallback(error -> {
+                            SwingUtilities.invokeLater(() -> {
+                                updateChat_notify("❌ Camera error: " + error);
+                                stopVideoCall();
+                            });
+                        });
+
+                        videoReceiveThread.setErrorCallback(error -> {
+                            SwingUtilities.invokeLater(() -> {
+                                updateChat_notify("❌ Video receive error: " + error);
+                                stopVideoCall();
+                            });
+                        });
+
+                        videoSendThread.start();
+                        videoReceiveThread.start();
+
+                        isVideoCallActive = true;
+                        updateChat_notify("📹 Video call connected");
+                        System.out.println("[ChatFrame] Video call accepted");
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    updateChat_notify("❌ Failed to accept video call: " + e.getMessage());
+                    if (videoFrame != null) {
+                        videoFrame.dispose();
+                    }
+                }
+            });
+        }
+
+        private void handleVideoCallEnd() {
+            SwingUtilities.invokeLater(() -> {
+                if (isVideoCallActive) {
+                    stopVideoCall();
+                    updateChat_notify("📹 " + nameGuest + " ended the video call");
+                }
+            });
         }
 
         private void handleChatClose() throws Exception {
@@ -821,5 +1043,7 @@ public class ChatFrame extends JFrame {
                 e.printStackTrace();
             }
         }
+
     }
+
 }

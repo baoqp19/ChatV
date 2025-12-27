@@ -36,7 +36,6 @@ public class MainFrame extends JFrame implements WindowListener {
 	private String dataUser;
 	private int portClient;
 	private int portServer;
-	private VoiceInfo voiceInfo;
 	private String selectedName = "";
 
 	// Static Components
@@ -173,7 +172,6 @@ public class MainFrame extends JFrame implements WindowListener {
 		try {
 			InetAddress address = InetAddress.getByName(peer.getHost());
 			int voicePort = peer.getPort() + 1; // Voice port = Chat port + 1
-			voiceInfo = new VoiceInfo(address, voicePort, peerName);
 			logVoiceInfo(peerName, address, voicePort);
 		} catch (Exception e) {
 			e.printStackTrace();

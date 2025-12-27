@@ -1,0 +1,204 @@
+Voice message methods to add to ChatFrame.java:
+
+    // ============ VOICE MESSAGE RECORDING ============
+
+    private void toggleVoiceRecording() {
+        if (isRecording) {
+            stopVoiceRecording();
+        } else {
+            startVoiceRecording();
+        }
+    }
+
+    private void startVoiceRecording() {
+        try {
+            currentRecordingFile = File.createTempFile("voice_msg_", ".wav");
+            
+            voiceRecorder = new VoiceRecorder(currentRecordingFile);
+            voiceRecorder.setCallback(new VoiceRecorder.RecordingCallback() {
+                @Override
+                public void onRecordingStarted() {
+                    SwingUtilities.invokeLater(() -> {
+                        isRecording = true;
+                        btnVoiceRecord.setBackground(new Color(220, 50, 50));
+                        btnVoiceRecord.setText("⏹");
+                        showRecordingOverlay();
+                    });
+                }
+
+                @Override
+                public void onRecordingProgress(int seconds) {
+                    SwingUtilities.invokeLater(() -> {
+                        if (recordingTimeLabel != null) {
+                            recordingTimeLabel.setText(String.format("0:%02d", seconds));
+                        }
+                        animateWaveform();
+                    });
+                }
+
+                @Override
+                public void onRecordingCompleted(File file, int durationSeconds) {
+                    SwingUtilities.invokeLater(() -> {
+                        hideRecordingOverlay();
+                        isRecording = false;
+                        btnVoiceRecord.setBackground(Color.WHITE);
+                        btnVoiceRecord.setText("🎤");
+                        sendVoiceMessage(file, durationSeconds);
+                    });
+                }
+
+                @Override
+                public void onRecordingError(String error) {
+                    SwingUtilities.invokeLater(() -> {
+                        hideRecordingOverlay();
+                        isRecording = false;
+                        btnVoiceRecord.setBackground(Color.WHITE);
+                        btnVoiceRecord.setText("🎤");
+                        updateChat_notify("❌ Recording error: " + error);
+                    });
+                }
+            });
+
+            voiceRecorder.start();
+            
+        } catch (IOException e) {
+            e.printStackTrace();
+            updateChat_notify("❌ Failed to create recording file");
+        }
+    }
+
+    private void stopVoiceRecording() {
+        if (voiceRecorder != null && voiceRecorder.isRecording()) {
+            voiceRecorder.stopRecording();
+        }
+    }
+
+    private void showRecordingOverlay() {
+        if (recordingOverlay == null) {
+            recordingOverlay = new JWindow(this);
+            JPanel panel = new JPanel();
+            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+            panel.setBackground(new Color(0, 132, 255));
+            panel.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+
+            JLabel micIcon = new JLabel("🎤");
+            micIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
+            micIcon.setForeground(Color.WHITE);
+            panel.add(micIcon);
+            panel.add(Box.createHorizontalStrut(10));
+
+            recordingWavePanel = new JPanel() {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    super.paintComponent(g);
+                    g.setColor(Color.WHITE);
+                    int centerY = getHeight() / 2;
+                    for (int i = 0; i < 20; i++) {
+                        int height = (int) (Math.random() * 20 + 5);
+                        g.fillRect(i * 6, centerY - height / 2, 4, height);
+                    }
+                }
+            };
+            recordingWavePanel.setPreferredSize(new Dimension(120, 30));
+            recordingWavePanel.setMaximumSize(new Dimension(120, 30));
+            recordingWavePanel.setOpaque(false);
+            panel.add(recordingWavePanel);
+            panel.add(Box.createHorizontalStrut(10));
+
+            recordingTimeLabel = new JLabel("0:00");
+            recordingTimeLabel.setForeground(Color.WHITE);
+            recordingTimeLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            panel.add(recordingTimeLabel);
+
+            recordingOverlay.setContentPane(panel);
+            recordingOverlay.pack();
+            recordingOverlay.setAlwaysOnTop(true);
+        }
+
+        Point framePos = getLocationOnScreen();
+        int x = framePos.x + (getWidth() - recordingOverlay.getWidth()) / 2;
+        int y = framePos.y + getHeight() - recordingOverlay.getHeight() - 80;
+        recordingOverlay.setLocation(x, y);
+        recordingOverlay.setVisible(true);
+    }
+
+    private void hideRecordingOverlay() {
+        if (recordingOverlay != null) {
+            recordingOverlay.setVisible(false);
+        }
+    }
+
+    private void animateWaveform() {
+        if (recordingWavePanel != null) {
+            recordingWavePanel.repaint();
+        }
+    }
+
+    private void sendVoiceMessage(File audioFile, int duration) {
+        try {
+            String voiceTag = "[voice:" + audioFile.getName() + ":" + duration + "]";
+            chat.sendMessage(sendMessage(voiceTag));
+            chat.sendFile(audioFile);
+            addVoiceMessageBubble(audioFile.getName(), duration, "right");
+            MessageDAO.saveMessage(nameUser, nameGuest, voiceTag);
+        } catch (Exception e) {
+            e.printStackTrace();
+            updateChat_notify("❌ Failed to send voice message");
+        }
+    }
+
+    private void addVoiceMessageBubble(String fileName, int duration, String align) {
+        JPanel bubbleContainer = new JPanel();
+        bubbleContainer.setLayout(new FlowLayout("left".equals(align) ? FlowLayout.LEFT : FlowLayout.RIGHT));
+        bubbleContainer.setBackground(new Color(54, 57, 63));
+
+        JPanel bubble = new JPanel();
+        bubble.setBackground("left".equals(align) ? Color.WHITE : new Color(0, 132, 255));
+        bubble.setLayout(new BoxLayout(bubble, BoxLayout.X_AXIS));
+        bubble.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
+
+        JButton playButton = new JButton("▶");
+        playButton.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        playButton.setPreferredSize(new Dimension(40, 40));
+        playButton.setBackground("left".equals(align) ? new Color(0, 132, 255) : Color.WHITE);
+        playButton.setForeground("left".equals(align) ? Color.WHITE : new Color(0, 132, 255));
+        playButton.setFocusPainted(false);
+        playButton.setBorder(BorderFactory.createEmptyBorder());
+        playButton.addActionListener(e -> playVoiceMessage(fileName));
+        bubble.add(playButton);
+
+        bubble.add(Box.createHorizontalStrut(8));
+
+        JPanel wavePanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.setColor("left".equals(align) ? Color.GRAY : Color.WHITE);
+                int centerY = getHeight() / 2;
+                for (int i = 0; i < 15; i++) {
+                    int height = 5 + (int)(Math.random() * 12);
+                    g.fillRect(i * 6, centerY - height/2, 3, height);
+                }
+            }
+        };
+        wavePanel.setPreferredSize(new Dimension(90, 30));
+        wavePanel.setOpaque(false);
+        bubble.add(wavePanel);
+
+        bubble.add(Box.createHorizontalStrut(8));
+
+        JLabel durationLabel = new JLabel(String.format("0:%02d", duration));
+        durationLabel.setForeground("left".equals(align) ? Color.BLACK : Color.WHITE);
+        durationLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        bubble.add(durationLabel);
+
+        bubbleContainer.add(bubble);
+        messagesPanel.add(bubbleContainer);
+        messagesPanel.revalidate();
+        messagesPanel.repaint();
+    }
+
+    private void playVoiceMessage(String fileName) {
+        // TODO: Implement audio playback
+        System.out.println("Playing voice message: " + fileName);
+    }

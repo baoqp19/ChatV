@@ -29,7 +29,6 @@ public class Client {
 	private Socket socketClient;
 	private ObjectInputStream in;
 	private ObjectOutputStream out;
-	public static VoiceInfo voiceInfo;
 
 	public String getUsername() {
 		return username;
