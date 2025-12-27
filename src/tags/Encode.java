@@ -83,6 +83,15 @@ public final class Encode {
 	}
 
 	/**
+	 * Encodes a delete message for a given displayed text.
+	 */
+	public static String sendDelete(String displayedText) {
+		return Tags.CHAT_DELETE_OPEN_TAG +
+				Tags.CHAT_DELETE_BODY_OPEN_TAG + displayedText + Tags.CHAT_DELETE_BODY_CLOSE_TAG +
+				Tags.CHAT_DELETE_CLOSE_TAG;
+	}
+
+	/**
 	 * Creates a chat request message
 	 * 
 	 * @param name Target peer name

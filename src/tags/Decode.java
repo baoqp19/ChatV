@@ -43,6 +43,10 @@ public final class Decode {
 					+ Tags.CHAT_EDIT_NEW_OPEN_TAG + ".*" + Tags.CHAT_EDIT_NEW_CLOSE_TAG
 					+ Tags.CHAT_EDIT_CLOSE_TAG);
 
+	private static final Pattern DELETE = Pattern.compile(
+			Tags.CHAT_DELETE_OPEN_TAG + Tags.CHAT_DELETE_BODY_OPEN_TAG + ".*" + Tags.CHAT_DELETE_BODY_CLOSE_TAG
+					+ Tags.CHAT_DELETE_CLOSE_TAG);
+
 	private static final Pattern FILE_NAME = Pattern.compile(
 			Tags.FILE_REQ_OPEN_TAG + ".*" + Tags.FILE_REQ_CLOSE_TAG);
 
@@ -174,7 +178,14 @@ public final class Decode {
 		return EDIT.matcher(msg).matches();
 	}
 
+	public static boolean isDelete(String msg) {
+		return DELETE.matcher(msg).matches();
+	}
+
 	public record EditPayload(String oldText, String newText) {
+	}
+
+	public record DeletePayload(String text) {
 	}
 
 	public static EditPayload getEditPayload(String msg) {
@@ -184,6 +195,14 @@ public final class Decode {
 		String oldText = extractContent(msg, Tags.CHAT_EDIT_OLD_OPEN_TAG, Tags.CHAT_EDIT_OLD_CLOSE_TAG);
 		String newText = extractContent(msg, Tags.CHAT_EDIT_NEW_OPEN_TAG, Tags.CHAT_EDIT_NEW_CLOSE_TAG);
 		return new EditPayload(oldText, newText);
+	}
+
+	public static DeletePayload getDeletePayload(String msg) {
+		if (!isDelete(msg)) {
+			return null;
+		}
+		String text = extractContent(msg, Tags.CHAT_DELETE_BODY_OPEN_TAG, Tags.CHAT_DELETE_BODY_CLOSE_TAG);
+		return new DeletePayload(text);
 	}
 
 	/**

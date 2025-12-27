@@ -141,4 +141,24 @@ public final class MessageDAO {
             LOGGER.log(Level.WARNING, "Failed to update message content in MySQL", e);
         }
     }
+
+    /**
+     * Deletes the most recent message matching sender/receiver/content.
+     */
+    public static void deleteMessage(String sender, String receiver, String content) {
+        ensureSchema();
+
+        String sql = "DELETE FROM " + TABLE + " WHERE id IN (" +
+                "SELECT id FROM (SELECT id FROM " + TABLE +
+                " WHERE sender = ? AND receiver = ? AND content = ? ORDER BY id DESC LIMIT 1) AS t)";
+
+        try (Connection con = DBUtil.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, sender);
+            ps.setString(2, receiver);
+            ps.setString(3, content);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Failed to delete message in MySQL", e);
+        }
+    }
 }

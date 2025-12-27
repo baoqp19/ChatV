@@ -161,25 +161,48 @@ public class ChatFrame extends JFrame {
             @Override
             public void mouseClicked(MouseEvent e) {
                 String current = messageLabel.getText();
-                String updated = JOptionPane.showInputDialog(ChatFrame.this, "Edit message",
-                        stripEditedSuffix(current));
-                if (updated == null) {
-                    return; // Cancel pressed
-                }
 
-                updated = updated.trim();
-                if (updated.isEmpty() || updated.equals(stripEditedSuffix(current))) {
-                    return; // Nothing to change
-                }
+                Object[] options = { "Edit", "Delete", "Cancel" };
+                int choice = JOptionPane.showOptionDialog(ChatFrame.this,
+                        "Choose action",
+                        "Message actions",
+                        JOptionPane.DEFAULT_OPTION,
+                        JOptionPane.PLAIN_MESSAGE,
+                        null,
+                        options,
+                        options[0]);
 
-                String newDisplay = updated + " (edited)";
-                messageLabel.setText(newDisplay);
+                if (choice == 0) {
+                    String updated = JOptionPane.showInputDialog(ChatFrame.this, "Edit message",
+                            stripEditedSuffix(current));
+                    if (updated == null) {
+                        return; // Cancel pressed
+                    }
 
-                try {
-                    chat.sendMessage(Encode.sendEdit(current, updated));
-                    MessageDAO.updateMessage(nameUser, nameGuest, current, newDisplay);
-                } catch (Exception ex) {
-                    ex.printStackTrace();
+                    updated = updated.trim();
+                    if (updated.isEmpty() || updated.equals(stripEditedSuffix(current))) {
+                        return; // Nothing to change
+                    }
+
+                    String newDisplay = updated + " (edited)";
+                    messageLabel.setText(newDisplay);
+
+                    try {
+                        chat.sendMessage(Encode.sendEdit(current, updated));
+                        MessageDAO.updateMessage(nameUser, nameGuest, current, newDisplay);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                } else if (choice == 1) {
+                    int confirm = JOptionPane.showConfirmDialog(ChatFrame.this,
+                            "Delete this message?",
+                            "Confirm delete",
+                            JOptionPane.YES_NO_OPTION);
+                    if (confirm != JOptionPane.YES_OPTION) {
+                        return;
+                    }
+
+                    deleteLocalMessage(messageLabel);
                 }
             }
         };
@@ -206,7 +229,7 @@ public class ChatFrame extends JFrame {
 
     private boolean updateLabelText(String oldDisplay, String newDisplay) {
         String normalizedOld = stripEditedSuffix(oldDisplay);
-        for (JLabel label : messageLabels) {
+        for (JLabel label : new ArrayList<>(messageLabels)) {
             String currentNormalized = stripEditedSuffix(label.getText());
             if (currentNormalized.equals(normalizedOld)) {
                 label.setText(newDisplay);
@@ -216,6 +239,40 @@ public class ChatFrame extends JFrame {
             }
         }
         return false;
+    }
+
+    private void deleteLocalMessage(JLabel label) {
+        String display = label.getText();
+        removeBubbleForLabel(label);
+        try {
+            chat.sendMessage(Encode.sendDelete(display));
+            MessageDAO.deleteMessage(nameUser, nameGuest, display);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private boolean deleteLabelText(String displayText) {
+        String target = stripEditedSuffix(displayText);
+        for (JLabel label : new ArrayList<>(messageLabels)) {
+            String normalized = stripEditedSuffix(label.getText());
+            if (normalized.equals(target)) {
+                removeBubbleForLabel(label);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void removeBubbleForLabel(JLabel label) {
+        Container bubble = label.getParent();
+        Container container = bubble != null ? bubble.getParent() : null;
+        if (container != null && container.getParent() == messagesPanel) {
+            messagesPanel.remove(container);
+        }
+        messageLabels.remove(label);
+        messagesPanel.revalidate();
+        messagesPanel.repaint();
     }
 
     // ============ UI INITIALIZATION ============
@@ -868,6 +925,8 @@ public class ChatFrame extends JFrame {
                 handleChatClose();
             } else if (Decode.isEdit(msgObj)) {
                 handleEditMessage(msgObj);
+            } else if (Decode.isDelete(msgObj)) {
+                handleDeleteMessage(msgObj);
             } else if (msgObj.equals("<VIDEO_CALL_START>")) {
                 handleVideoCallStart();
             } else if (msgObj.equals("<VIDEO_CALL_END>")) {
@@ -985,6 +1044,22 @@ public class ChatFrame extends JFrame {
             });
 
             MessageDAO.updateMessage(nameGuest, nameUser, payload.oldText(), newDisplay);
+        }
+
+        private void handleDeleteMessage(String msgObj) {
+            Decode.DeletePayload payload = Decode.getDeletePayload(msgObj);
+            if (payload == null) {
+                return;
+            }
+
+            SwingUtilities.invokeLater(() -> {
+                boolean removed = deleteLabelText(payload.text());
+                if (!removed) {
+                    updateChat_notify(nameGuest + " deleted a message");
+                }
+            });
+
+            MessageDAO.deleteMessage(nameGuest, nameUser, payload.text());
         }
 
         private void handleChatClose() throws Exception {

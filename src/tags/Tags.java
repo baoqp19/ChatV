@@ -103,6 +103,12 @@ public final class Tags {
 	public static final String CHAT_EDIT_NEW_OPEN_TAG = "<NEW>";
 	public static final String CHAT_EDIT_NEW_CLOSE_TAG = "</NEW>";
 
+	// Delete message tags
+	public static final String CHAT_DELETE_OPEN_TAG = "<CHAT_DELETE>";
+	public static final String CHAT_DELETE_CLOSE_TAG = "</CHAT_DELETE>";
+	public static final String CHAT_DELETE_BODY_OPEN_TAG = "<BODY>";
+	public static final String CHAT_DELETE_BODY_CLOSE_TAG = "</BODY>";
+
 	/**
 	 * Shows a yes/no confirmation dialog
 	 * 
