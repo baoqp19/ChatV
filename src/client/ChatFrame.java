@@ -467,7 +467,7 @@ public class ChatFrame extends JFrame {
         messagesPanel.setBackground(new Color(54, 57, 63));
 
         JScrollPane scrollPane = new JScrollPane(messagesPanel);
-        scrollPane.setBounds(0, 0, 562, 323);
+        scrollPane.setBounds(0, 0, 562, 300);
         scrollPane.setBackground(new Color(54, 57, 63));
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         panel.add(scrollPane);
@@ -479,7 +479,7 @@ public class ChatFrame extends JFrame {
         typingLabel = new JLabel("");
         typingLabel.setForeground(new Color(0, 132, 255));
         typingLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        typingLabel.setBounds(10, 324, 300, 20);
+        typingLabel.setBounds(10, 303, 300, 20);
         typingLabel.setVisible(false);
         panel.add(typingLabel);
     }
@@ -544,13 +544,19 @@ public class ChatFrame extends JFrame {
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     sendTextMessage();
+                    return; // Don't send typing indicator when sending message
                 }
-                handleTypingKeyPress();
+                // Only send typing indicator for actual text input
+                if (!e.isActionKey() && !e.isControlDown() && !e.isAltDown()) {
+                    handleTypingKeyPress();
+                }
             }
 
             @Override
             public void keyReleased(KeyEvent e) {
-                scheduleTypingStop();
+                if (e.getKeyCode() != KeyEvent.VK_ENTER) {
+                    scheduleTypingStop();
+                }
             }
         });
         panel.add(txtMessage);
