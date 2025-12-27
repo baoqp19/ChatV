@@ -126,6 +126,33 @@ public final class Tags {
 	public static final String CHAT_REACTION_EMOJI_OPEN_TAG = "<EMOJI>";
 	public static final String CHAT_REACTION_EMOJI_CLOSE_TAG = "</EMOJI>";
 
+	// Group chat tags
+	public static final String GROUP_CREATE_OPEN_TAG = "<GROUP_CREATE>";
+	public static final String GROUP_CREATE_CLOSE_TAG = "</GROUP_CREATE>";
+	public static final String GROUP_NAME_OPEN_TAG = "<GROUP_NAME>";
+	public static final String GROUP_NAME_CLOSE_TAG = "</GROUP_NAME>";
+	public static final String GROUP_CREATOR_OPEN_TAG = "<CREATOR>";
+	public static final String GROUP_CREATOR_CLOSE_TAG = "</CREATOR>";
+
+	public static final String GROUP_INVITE_OPEN_TAG = "<GROUP_INVITE>";
+	public static final String GROUP_INVITE_CLOSE_TAG = "</GROUP_INVITE>";
+	public static final String GROUP_ID_OPEN_TAG = "<GROUP_ID>";
+	public static final String GROUP_ID_CLOSE_TAG = "</GROUP_ID>";
+	public static final String INVITEE_OPEN_TAG = "<INVITEE>";
+	public static final String INVITEE_CLOSE_TAG = "</INVITEE>";
+
+	public static final String GROUP_MSG_OPEN_TAG = "<GROUP_MSG>";
+	public static final String GROUP_MSG_CLOSE_TAG = "</GROUP_MSG>";
+	public static final String GROUP_SENDER_OPEN_TAG = "<SENDER>";
+	public static final String GROUP_SENDER_CLOSE_TAG = "</SENDER>";
+	public static final String GROUP_CONTENT_OPEN_TAG = "<CONTENT>";
+	public static final String GROUP_CONTENT_CLOSE_TAG = "</CONTENT>";
+
+	public static final String GROUP_JOIN_OPEN_TAG = "<GROUP_JOIN>";
+	public static final String GROUP_JOIN_CLOSE_TAG = "</GROUP_JOIN>";
+	public static final String GROUP_MEMBER_OPEN_TAG = "<MEMBER>";
+	public static final String GROUP_MEMBER_CLOSE_TAG = "</MEMBER>";
+
 	/**
 	 * Shows a yes/no confirmation dialog
 	 * 

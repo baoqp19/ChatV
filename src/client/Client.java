@@ -1,10 +1,10 @@
 package client;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.*;
 import java.util.ArrayList;
-
 
 import data.Peer;
 import database.UserDAO;
@@ -33,6 +33,7 @@ public class Client {
 	public String getUsername() {
 		return username;
 	}
+
 	// ========================= CONSTRUCTOR =========================
 	public Client(String ip, int portClient, String username, String rawUserList, int portServer) throws Exception {
 		this.serverIP = InetAddress.getByName(ip);

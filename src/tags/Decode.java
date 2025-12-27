@@ -57,6 +57,28 @@ public final class Decode {
 					+ Tags.CHAT_REACTION_EMOJI_OPEN_TAG + "[^<>]+" + Tags.CHAT_REACTION_EMOJI_CLOSE_TAG
 					+ Tags.CHAT_REACTION_CLOSE_TAG);
 
+	private static final Pattern GROUP_CREATE = Pattern.compile(
+			Tags.GROUP_CREATE_OPEN_TAG + Tags.GROUP_NAME_OPEN_TAG + ".*" + Tags.GROUP_NAME_CLOSE_TAG
+					+ Tags.GROUP_CREATOR_OPEN_TAG + ".*" + Tags.GROUP_CREATOR_CLOSE_TAG
+					+ Tags.GROUP_CREATE_CLOSE_TAG);
+
+	private static final Pattern GROUP_INVITE = Pattern.compile(
+			Tags.GROUP_INVITE_OPEN_TAG + Tags.GROUP_ID_OPEN_TAG + "[0-9]+" + Tags.GROUP_ID_CLOSE_TAG
+					+ Tags.GROUP_NAME_OPEN_TAG + ".*" + Tags.GROUP_NAME_CLOSE_TAG
+					+ Tags.INVITEE_OPEN_TAG + ".*" + Tags.INVITEE_CLOSE_TAG
+					+ Tags.GROUP_INVITE_CLOSE_TAG);
+
+	private static final Pattern GROUP_MSG = Pattern.compile(
+			Tags.GROUP_MSG_OPEN_TAG + Tags.GROUP_ID_OPEN_TAG + "[0-9]+" + Tags.GROUP_ID_CLOSE_TAG
+					+ Tags.GROUP_SENDER_OPEN_TAG + ".*" + Tags.GROUP_SENDER_CLOSE_TAG
+					+ Tags.GROUP_CONTENT_OPEN_TAG + ".*" + Tags.GROUP_CONTENT_CLOSE_TAG
+					+ Tags.GROUP_MSG_CLOSE_TAG);
+
+	private static final Pattern GROUP_JOIN = Pattern.compile(
+			Tags.GROUP_JOIN_OPEN_TAG + Tags.GROUP_ID_OPEN_TAG + "[0-9]+" + Tags.GROUP_ID_CLOSE_TAG
+					+ Tags.GROUP_MEMBER_OPEN_TAG + ".*" + Tags.GROUP_MEMBER_CLOSE_TAG
+					+ Tags.GROUP_JOIN_CLOSE_TAG);
+
 	private static final Pattern FILE_NAME = Pattern.compile(
 			Tags.FILE_REQ_OPEN_TAG + ".*" + Tags.FILE_REQ_CLOSE_TAG);
 
@@ -200,6 +222,22 @@ public final class Decode {
 		return REACTION.matcher(msg).matches();
 	}
 
+	public static boolean isGroupCreate(String msg) {
+		return GROUP_CREATE.matcher(msg).matches();
+	}
+
+	public static boolean isGroupInvite(String msg) {
+		return GROUP_INVITE.matcher(msg).matches();
+	}
+
+	public static boolean isGroupMessage(String msg) {
+		return GROUP_MSG.matcher(msg).matches();
+	}
+
+	public static boolean isGroupJoin(String msg) {
+		return GROUP_JOIN.matcher(msg).matches();
+	}
+
 	public record EditPayload(String oldText, String newText) {
 	}
 
@@ -210,6 +248,18 @@ public final class Decode {
 	}
 
 	public record ReactionPayload(String target, String emoji) {
+	}
+
+	public record GroupCreatePayload(String groupName, String creator) {
+	}
+
+	public record GroupInvitePayload(int groupId, String groupName, String invitee) {
+	}
+
+	public record GroupMessagePayload(int groupId, String sender, String content) {
+	}
+
+	public record GroupJoinPayload(int groupId, String member) {
 	}
 
 	public static EditPayload getEditPayload(String msg) {
@@ -244,6 +294,44 @@ public final class Decode {
 		String target = extractContent(msg, Tags.CHAT_REACTION_TARGET_OPEN_TAG, Tags.CHAT_REACTION_TARGET_CLOSE_TAG);
 		String emoji = extractContent(msg, Tags.CHAT_REACTION_EMOJI_OPEN_TAG, Tags.CHAT_REACTION_EMOJI_CLOSE_TAG);
 		return new ReactionPayload(target, emoji);
+	}
+
+	public static GroupCreatePayload getGroupCreatePayload(String msg) {
+		if (!isGroupCreate(msg)) {
+			return null;
+		}
+		String groupName = extractContent(msg, Tags.GROUP_NAME_OPEN_TAG, Tags.GROUP_NAME_CLOSE_TAG);
+		String creator = extractContent(msg, Tags.GROUP_CREATOR_OPEN_TAG, Tags.GROUP_CREATOR_CLOSE_TAG);
+		return new GroupCreatePayload(groupName, creator);
+	}
+
+	public static GroupInvitePayload getGroupInvitePayload(String msg) {
+		if (!isGroupInvite(msg)) {
+			return null;
+		}
+		String groupIdStr = extractContent(msg, Tags.GROUP_ID_OPEN_TAG, Tags.GROUP_ID_CLOSE_TAG);
+		String groupName = extractContent(msg, Tags.GROUP_NAME_OPEN_TAG, Tags.GROUP_NAME_CLOSE_TAG);
+		String invitee = extractContent(msg, Tags.INVITEE_OPEN_TAG, Tags.INVITEE_CLOSE_TAG);
+		return new GroupInvitePayload(Integer.parseInt(groupIdStr), groupName, invitee);
+	}
+
+	public static GroupMessagePayload getGroupMessagePayload(String msg) {
+		if (!isGroupMessage(msg)) {
+			return null;
+		}
+		String groupIdStr = extractContent(msg, Tags.GROUP_ID_OPEN_TAG, Tags.GROUP_ID_CLOSE_TAG);
+		String sender = extractContent(msg, Tags.GROUP_SENDER_OPEN_TAG, Tags.GROUP_SENDER_CLOSE_TAG);
+		String content = extractContent(msg, Tags.GROUP_CONTENT_OPEN_TAG, Tags.GROUP_CONTENT_CLOSE_TAG);
+		return new GroupMessagePayload(Integer.parseInt(groupIdStr), sender, content);
+	}
+
+	public static GroupJoinPayload getGroupJoinPayload(String msg) {
+		if (!isGroupJoin(msg)) {
+			return null;
+		}
+		String groupIdStr = extractContent(msg, Tags.GROUP_ID_OPEN_TAG, Tags.GROUP_ID_CLOSE_TAG);
+		String member = extractContent(msg, Tags.GROUP_MEMBER_OPEN_TAG, Tags.GROUP_MEMBER_CLOSE_TAG);
+		return new GroupJoinPayload(Integer.parseInt(groupIdStr), member);
 	}
 
 	/**

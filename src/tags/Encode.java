@@ -118,6 +118,48 @@ public final class Encode {
 	}
 
 	/**
+	 * Encodes a group creation request.
+	 */
+	public static String sendGroupCreate(String groupName, String creator) {
+		return Tags.GROUP_CREATE_OPEN_TAG +
+				Tags.GROUP_NAME_OPEN_TAG + groupName + Tags.GROUP_NAME_CLOSE_TAG +
+				Tags.GROUP_CREATOR_OPEN_TAG + creator + Tags.GROUP_CREATOR_CLOSE_TAG +
+				Tags.GROUP_CREATE_CLOSE_TAG;
+	}
+
+	/**
+	 * Encodes a group invite message.
+	 */
+	public static String sendGroupInvite(int groupId, String groupName, String invitee) {
+		return Tags.GROUP_INVITE_OPEN_TAG +
+				Tags.GROUP_ID_OPEN_TAG + groupId + Tags.GROUP_ID_CLOSE_TAG +
+				Tags.GROUP_NAME_OPEN_TAG + groupName + Tags.GROUP_NAME_CLOSE_TAG +
+				Tags.INVITEE_OPEN_TAG + invitee + Tags.INVITEE_CLOSE_TAG +
+				Tags.GROUP_INVITE_CLOSE_TAG;
+	}
+
+	/**
+	 * Encodes a group message.
+	 */
+	public static String sendGroupMessage(int groupId, String sender, String content) {
+		return Tags.GROUP_MSG_OPEN_TAG +
+				Tags.GROUP_ID_OPEN_TAG + groupId + Tags.GROUP_ID_CLOSE_TAG +
+				Tags.GROUP_SENDER_OPEN_TAG + sender + Tags.GROUP_SENDER_CLOSE_TAG +
+				Tags.GROUP_CONTENT_OPEN_TAG + content + Tags.GROUP_CONTENT_CLOSE_TAG +
+				Tags.GROUP_MSG_CLOSE_TAG;
+	}
+
+	/**
+	 * Encodes a group join notification.
+	 */
+	public static String sendGroupJoin(int groupId, String member) {
+		return Tags.GROUP_JOIN_OPEN_TAG +
+				Tags.GROUP_ID_OPEN_TAG + groupId + Tags.GROUP_ID_CLOSE_TAG +
+				Tags.GROUP_MEMBER_OPEN_TAG + member + Tags.GROUP_MEMBER_CLOSE_TAG +
+				Tags.GROUP_JOIN_CLOSE_TAG;
+	}
+
+	/**
 	 * Creates a chat request message
 	 * 
 	 * @param name Target peer name

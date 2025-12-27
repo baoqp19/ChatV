@@ -5,10 +5,13 @@ import java.awt.event.*;
 import java.io.*;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.util.List;
 import javax.swing.*;
 import javax.swing.border.*;
 
 import data.Peer;
+import database.GroupDAO;
+import database.GroupDAO.GroupInfo;
 import tags.Tags;
 
 public class MainFrame extends JFrame implements WindowListener {
@@ -41,6 +44,11 @@ public class MainFrame extends JFrame implements WindowListener {
 	// Static Components
 	private static final DefaultListModel<String> model = new DefaultListModel<>();
 	private static JList<String> listActive;
+
+	// Group chat components
+	private DefaultListModel<String> groupsModel = new DefaultListModel<>();
+	private JList<String> listGroups;
+	private java.util.Map<Integer, GroupChatFrame> openGroupChats = new java.util.HashMap<>();
 
 	public MainFrame(String ip, int portClient, String username, String rawUserList, int portServer) throws Exception {
 		this.ipClient = ip;
@@ -80,7 +88,154 @@ public class MainFrame extends JFrame implements WindowListener {
 		setContentPane(contentPane);
 
 		contentPane.add(createHeader(), BorderLayout.NORTH);
-		contentPane.add(createCenterPanel(), BorderLayout.CENTER);
+		contentPane.add(createCenterPanelWithGroups(), BorderLayout.CENTER);
+	}
+
+	private JPanel createCenterPanelWithGroups() {
+		JPanel centerPanel = new JPanel(new BorderLayout(15, 15));
+		centerPanel.setOpaque(false);
+
+		// Split pane for users and groups
+		JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+		splitPane.setResizeWeight(0.5);
+		splitPane.setDividerLocation(330);
+
+		splitPane.setLeftComponent(createFriendsPanel());
+		splitPane.setRightComponent(createGroupsPanel());
+
+		centerPanel.add(splitPane, BorderLayout.CENTER);
+		centerPanel.add(createServerPanel(), BorderLayout.SOUTH);
+		return centerPanel;
+	}
+
+	private JPanel createGroupsPanel() {
+		JPanel groupsPanel = new JPanel(new BorderLayout());
+		groupsPanel.setBackground(Color.WHITE);
+		groupsPanel.setBorder(createTitledBorder(new Color(0, 180, 100), "My Groups"));
+
+		listGroups = new JList<>(groupsModel);
+		listGroups.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+		listGroups.setSelectionBackground(new Color(0, 180, 100));
+		listGroups.addMouseListener(new GroupsListMouseListener());
+
+		JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+		buttonsPanel.setBackground(Color.WHITE);
+
+		JButton btnCreateGroup = new JButton("➕ Create Group");
+		btnCreateGroup.setFont(new Font("Segoe UI", Font.BOLD, 14));
+		btnCreateGroup.setBackground(new Color(0, 180, 100));
+		btnCreateGroup.setForeground(Color.WHITE);
+		btnCreateGroup.setFocusPainted(false);
+		btnCreateGroup.addActionListener(e -> showCreateGroupDialog());
+		buttonsPanel.add(btnCreateGroup);
+
+		JButton btnRefreshGroups = new JButton("🔄 Refresh");
+		btnRefreshGroups.setFont(new Font("Segoe UI", Font.BOLD, 14));
+		btnRefreshGroups.setBackground(new Color(100, 150, 200));
+		btnRefreshGroups.setForeground(Color.WHITE);
+		btnRefreshGroups.setFocusPainted(false);
+		btnRefreshGroups.addActionListener(e -> loadUserGroups());
+		buttonsPanel.add(btnRefreshGroups);
+
+		groupsPanel.add(new JScrollPane(listGroups), BorderLayout.CENTER);
+		groupsPanel.add(buttonsPanel, BorderLayout.SOUTH);
+
+		// Load groups on startup
+		loadUserGroups();
+
+		return groupsPanel;
+	}
+
+	private void showCreateGroupDialog() {
+		JPanel panel = new JPanel(new GridLayout(3, 2, 10, 10));
+		panel.add(new JLabel("Group Name:"));
+		JTextField txtGroupName = new JTextField(20);
+		panel.add(txtGroupName);
+
+		panel.add(new JLabel("Invite Users (comma-separated):"));
+		JTextField txtMembers = new JTextField(20);
+		panel.add(txtMembers);
+
+		int result = JOptionPane.showConfirmDialog(this, panel, "Create Group",
+				JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+		if (result == JOptionPane.OK_OPTION) {
+			String groupName = txtGroupName.getText().trim();
+			String membersStr = txtMembers.getText().trim();
+
+			if (groupName.isEmpty()) {
+				JOptionPane.showMessageDialog(this, "Group name cannot be empty!",
+						"Error", JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+
+			// Create group in database
+			int groupId = GroupDAO.createGroup(groupName, nameUser);
+			if (groupId > 0) {
+				// Add invited members
+				if (!membersStr.isEmpty()) {
+					String[] members = membersStr.split(",");
+					for (String member : members) {
+						String trimmed = member.trim();
+						if (!trimmed.isEmpty() && !trimmed.equals(nameUser)) {
+							GroupDAO.addMember(groupId, trimmed);
+						}
+					}
+				}
+
+				JOptionPane.showMessageDialog(this, "Group created successfully!",
+						"Success", JOptionPane.INFORMATION_MESSAGE);
+				loadUserGroups();
+
+				// Open the group chat window
+				openGroupChat(groupId, groupName);
+			} else {
+				JOptionPane.showMessageDialog(this, "Failed to create group!",
+						"Error", JOptionPane.ERROR_MESSAGE);
+			}
+		}
+	}
+
+	private void loadUserGroups() {
+		new Thread(() -> {
+			List<GroupInfo> groups = GroupDAO.getUserGroups(nameUser);
+			SwingUtilities.invokeLater(() -> {
+				groupsModel.clear();
+				for (GroupInfo group : groups) {
+					groupsModel.addElement(group.groupName() + " (ID:" + group.groupId() + ")");
+				}
+			});
+		}).start();
+	}
+
+	private void openGroupChat(int groupId, String groupName) {
+		if (openGroupChats.containsKey(groupId)) {
+			// Bring existing window to front
+			GroupChatFrame existing = openGroupChats.get(groupId);
+			existing.toFront();
+			existing.requestFocus();
+		} else {
+			// Create new group chat window
+			try {
+				GroupChatFrame groupChat = new GroupChatFrame(
+						groupId, groupName, nameUser,
+						clientNode); // Pass client for connections
+				openGroupChats.put(groupId, groupChat);
+
+				// Remove from map when closed
+				groupChat.addWindowListener(new WindowAdapter() {
+					@Override
+					public void windowClosed(WindowEvent e) {
+						openGroupChats.remove(groupId);
+					}
+				});
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(this,
+						"Failed to open group chat: " + e.getMessage(),
+						"Error", JOptionPane.ERROR_MESSAGE);
+			}
+		}
 	}
 
 	private JPanel createHeader() {
@@ -294,6 +449,26 @@ public class MainFrame extends JFrame implements WindowListener {
 				selectedName = model.getElementAt(index);
 				updateVoiceInfo(selectedName);
 				connectChat();
+			}
+		}
+	}
+
+	private class GroupsListMouseListener extends MouseAdapter {
+		@Override
+		public void mouseClicked(MouseEvent e) {
+			if (e.getClickCount() == 2) { // Double-click to open
+				int index = listGroups.locationToIndex(e.getPoint());
+				if (index >= 0) {
+					String selected = groupsModel.getElementAt(index);
+					// Extract group ID from "GroupName (ID:123)" format
+					int idStart = selected.indexOf("(ID:") + 4;
+					int idEnd = selected.indexOf(")", idStart);
+					if (idStart > 3 && idEnd > idStart) {
+						int groupId = Integer.parseInt(selected.substring(idStart, idEnd));
+						String groupName = selected.substring(0, selected.indexOf(" (ID:"));
+						openGroupChat(groupId, groupName);
+					}
+				}
 			}
 		}
 	}

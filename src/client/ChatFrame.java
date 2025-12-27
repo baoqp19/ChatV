@@ -8,7 +8,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.Socket;
 import java.time.LocalDateTime;
@@ -29,6 +28,7 @@ import tags.Tags;
 import static tags.Encode.sendMessage;
 
 public class ChatFrame extends JFrame {
+
     private static final long serialVersionUID = 1L;
     private static final String URL_DIR = System.getProperty("user.dir");
     private static final int EMOJI_BUTTON_WIDTH = 44;
@@ -105,6 +105,7 @@ public class ChatFrame extends JFrame {
             addMessageBubble(msg, "left", new Color(255, 255, 255), Color.BLACK);
         }
     }
+
 
     public void updateChat_send(String msg) {
         addMessageBubble(msg, "right", new Color(0, 132, 255), Color.WHITE);

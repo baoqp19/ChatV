@@ -4,6 +4,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
@@ -90,5 +92,29 @@ public final class UserDAO {
             LOGGER.log(Level.WARNING, "Error updating user status: " + username, e);
         }
         return false;
+    }
+
+    /**
+     * Retrieves all users from the database
+     * 
+     * @return List of all usernames in the database
+     */
+    public static List<String> getAllUsers() {
+        List<String> users = new ArrayList<>();
+        String sql = "SELECT username FROM users ORDER BY username";
+
+        try (Connection con = DBUtil.getConnection();
+                PreparedStatement ps = con.prepareStatement(sql)) {
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    users.add(rs.getString("username"));
+                }
+            }
+
+        } catch (SQLException e) {
+            LOGGER.log(Level.WARNING, "Error retrieving all users", e);
+        }
+        return users;
     }
 }

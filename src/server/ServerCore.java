@@ -68,6 +68,7 @@ public class ServerCore {
 		connection = server.accept();
 		obInputStream = new ObjectInputStream(connection.getInputStream());
 		String msg = (String) obInputStream.readObject();
+
 		ArrayList<String> getData = Decode.getUser(msg);
 		if (getData != null) {
 			if (!isExsistName(getData.get(0))) {
@@ -88,7 +89,6 @@ public class ServerCore {
 	}
 
 	private void saveNewPeer(String user, String ip, int port) throws Exception {
-
 		Connection conn = DBUtil.getConnection();
 		String sql = "INSERT INTO peers(username, ip, port, status) " +
 				"VALUES (?, ?, ?, 'ONLINE') " +
