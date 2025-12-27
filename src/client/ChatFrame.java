@@ -4,6 +4,8 @@ import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
@@ -132,10 +134,43 @@ public class ChatFrame extends JFrame {
         bubble.add(Box.createVerticalStrut(6));
         bubble.add(timeLabel);
 
+        attachMessageEditor(bubble, messageLabel, "right".equals(align));
+
         bubbleContainer.add(bubble);
         messagesPanel.add(bubbleContainer);
         messagesPanel.revalidate();
         messagesPanel.repaint();
+    }
+
+    /**
+     * Allows the sender to edit a message bubble in-place.
+     */
+    private void attachMessageEditor(JPanel bubble, JLabel messageLabel, boolean allowEdit) {
+        if (!allowEdit) {
+            return;
+        }
+
+        MouseAdapter editor = new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                String current = messageLabel.getText();
+                String updated = JOptionPane.showInputDialog(ChatFrame.this, "Edit message", current);
+                if (updated == null) {
+                    return; // Cancel pressed
+                }
+
+                updated = updated.trim();
+                if (updated.isEmpty() || updated.equals(current)) {
+                    return; // Nothing to change
+                }
+
+                messageLabel.setText(updated + " (edited)");
+            }
+        };
+
+        bubble.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        bubble.addMouseListener(editor);
+        messageLabel.addMouseListener(editor);
     }
 
     // ============ UI INITIALIZATION ============
@@ -407,6 +442,8 @@ public class ChatFrame extends JFrame {
         timeLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         bubble.add(Box.createVerticalStrut(6));
         bubble.add(timeLabel);
+
+        attachMessageEditor(bubble, messageLabel, "right".equals(align));
 
         bubbleContainer.add(bubble);
         messagesPanel.add(bubbleContainer);
