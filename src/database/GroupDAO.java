@@ -19,6 +19,8 @@ public final class GroupDAO {
     private static final String GROUPS_TABLE = "chat_groups";
     private static final String MEMBERS_TABLE = "group_members";
     private static final String MESSAGES_TABLE = "group_messages";
+    private static final String MESSAGE_STATUS_TABLE = "group_message_status";
+    private static final String READ_POINTER_TABLE = "group_read_pointers";
     private static volatile boolean schemaReady = false;
 
     private GroupDAO() {
@@ -74,6 +76,28 @@ public final class GroupDAO {
                                 "  sender VARCHAR(50) NOT NULL," +
                                 "  content TEXT NOT NULL," +
                                 "  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
+                                "  FOREIGN KEY (group_id) REFERENCES " + GROUPS_TABLE + "(group_id) ON DELETE CASCADE" +
+                                ")");
+
+                        // Message status per user (sent/delivered/read)
+                        stmt.execute(
+                            "CREATE TABLE IF NOT EXISTS " + MESSAGE_STATUS_TABLE + " (" +
+                                "  message_id INT NOT NULL," +
+                                "  username VARCHAR(50) NOT NULL," +
+                                "  status VARCHAR(20) NOT NULL," +
+                                "  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+                                "  PRIMARY KEY (message_id, username)," +
+                                "  FOREIGN KEY (message_id) REFERENCES " + MESSAGES_TABLE + "(message_id) ON DELETE CASCADE" +
+                                ")");
+
+                        // Read pointers per user (latest read message)
+                        stmt.execute(
+                            "CREATE TABLE IF NOT EXISTS " + READ_POINTER_TABLE + " (" +
+                                "  group_id INT NOT NULL," +
+                                "  username VARCHAR(50) NOT NULL," +
+                                "  last_read_message_id INT NOT NULL," +
+                                "  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+                                "  PRIMARY KEY (group_id, username)," +
                                 "  FOREIGN KEY (group_id) REFERENCES " + GROUPS_TABLE + "(group_id) ON DELETE CASCADE" +
                                 ")");
 
@@ -263,6 +287,88 @@ public final class GroupDAO {
     }
 
     /**
+     * Upserts a message status for a given user (sent, delivered, read).
+     */
+    public static void saveMessageStatus(int messageId, String username, String status) {
+        ensureSchema();
+        String sql = "INSERT INTO " + MESSAGE_STATUS_TABLE + " (message_id, username, status) VALUES (?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE status = VALUES(status), updated_at = CURRENT_TIMESTAMP";
+        try (Connection con = DBUtil.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, messageId);
+            ps.setString(2, username);
+            ps.setString(3, status);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Failed to save message status", e);
+        }
+    }
+
+    /**
+     * Retrieves message statuses for a set of message IDs for the given user.
+     */
+    public static java.util.Map<Integer, String> getMessageStatusesForUser(List<Integer> messageIds, String username) {
+        ensureSchema();
+        java.util.Map<Integer, String> result = new java.util.HashMap<>();
+        if (messageIds == null || messageIds.isEmpty()) {
+            return result;
+        }
+
+        String placeholders = String.join(",", java.util.Collections.nCopies(messageIds.size(), "?"));
+        String sql = "SELECT message_id, status FROM " + MESSAGE_STATUS_TABLE + " WHERE username = ? AND message_id IN (" + placeholders + ")";
+
+        try (Connection con = DBUtil.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, username);
+            int idx = 2;
+            for (Integer id : messageIds) {
+                ps.setInt(idx++, id);
+            }
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                result.put(rs.getInt("message_id"), rs.getString("status"));
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Failed to load message statuses", e);
+        }
+        return result;
+    }
+
+    /**
+     * Upserts read pointer for a user in a group.
+     */
+    public static void setReadPointer(int groupId, String username, int lastReadMessageId) {
+        ensureSchema();
+        String sql = "INSERT INTO " + READ_POINTER_TABLE + " (group_id, username, last_read_message_id) VALUES (?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE last_read_message_id = VALUES(last_read_message_id), updated_at = CURRENT_TIMESTAMP";
+        try (Connection con = DBUtil.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, groupId);
+            ps.setString(2, username);
+            ps.setInt(3, lastReadMessageId);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Failed to update read pointer", e);
+        }
+    }
+
+    /**
+     * Gets read pointers for all members of a group.
+     */
+    public static java.util.Map<String, Integer> getReadPointers(int groupId) {
+        ensureSchema();
+        java.util.Map<String, Integer> result = new java.util.HashMap<>();
+        String sql = "SELECT username, last_read_message_id FROM " + READ_POINTER_TABLE + " WHERE group_id = ?";
+        try (Connection con = DBUtil.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, groupId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                result.put(rs.getString("username"), rs.getInt("last_read_message_id"));
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Failed to load read pointers", e);
+        }
+        return result;
+    }
+
+    /**
      * Loads group message history (latest 50 messages).
      */
     public static List<GroupMessage> loadGroupMessages(int groupId) {
@@ -405,4 +511,5 @@ public final class GroupDAO {
         }
         return null;
     }
+
 }

@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
-
 /**
  * Group chat window with multi-user messaging support.
  */
