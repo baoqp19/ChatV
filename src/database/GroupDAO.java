@@ -79,20 +79,21 @@ public final class GroupDAO {
                                 "  FOREIGN KEY (group_id) REFERENCES " + GROUPS_TABLE + "(group_id) ON DELETE CASCADE" +
                                 ")");
 
-                        // Message status per user (sent/delivered/read)
-                        stmt.execute(
-                            "CREATE TABLE IF NOT EXISTS " + MESSAGE_STATUS_TABLE + " (" +
+                // Message status per user (sent/delivered/read)
+                stmt.execute(
+                        "CREATE TABLE IF NOT EXISTS " + MESSAGE_STATUS_TABLE + " (" +
                                 "  message_id INT NOT NULL," +
                                 "  username VARCHAR(50) NOT NULL," +
                                 "  status VARCHAR(20) NOT NULL," +
                                 "  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
                                 "  PRIMARY KEY (message_id, username)," +
-                                "  FOREIGN KEY (message_id) REFERENCES " + MESSAGES_TABLE + "(message_id) ON DELETE CASCADE" +
+                                "  FOREIGN KEY (message_id) REFERENCES " + MESSAGES_TABLE
+                                + "(message_id) ON DELETE CASCADE" +
                                 ")");
 
-                        // Read pointers per user (latest read message)
-                        stmt.execute(
-                            "CREATE TABLE IF NOT EXISTS " + READ_POINTER_TABLE + " (" +
+                // Read pointers per user (latest read message)
+                stmt.execute(
+                        "CREATE TABLE IF NOT EXISTS " + READ_POINTER_TABLE + " (" +
                                 "  group_id INT NOT NULL," +
                                 "  username VARCHAR(50) NOT NULL," +
                                 "  last_read_message_id INT NOT NULL," +
@@ -314,7 +315,8 @@ public final class GroupDAO {
         }
 
         String placeholders = String.join(",", java.util.Collections.nCopies(messageIds.size(), "?"));
-        String sql = "SELECT message_id, status FROM " + MESSAGE_STATUS_TABLE + " WHERE username = ? AND message_id IN (" + placeholders + ")";
+        String sql = "SELECT message_id, status FROM " + MESSAGE_STATUS_TABLE
+                + " WHERE username = ? AND message_id IN (" + placeholders + ")";
 
         try (Connection con = DBUtil.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, username);
@@ -337,7 +339,8 @@ public final class GroupDAO {
      */
     public static void setReadPointer(int groupId, String username, int lastReadMessageId) {
         ensureSchema();
-        String sql = "INSERT INTO " + READ_POINTER_TABLE + " (group_id, username, last_read_message_id) VALUES (?, ?, ?) " +
+        String sql = "INSERT INTO " + READ_POINTER_TABLE
+                + " (group_id, username, last_read_message_id) VALUES (?, ?, ?) " +
                 "ON DUPLICATE KEY UPDATE last_read_message_id = VALUES(last_read_message_id), updated_at = CURRENT_TIMESTAMP";
         try (Connection con = DBUtil.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, groupId);
@@ -364,6 +367,25 @@ public final class GroupDAO {
             }
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Failed to load read pointers", e);
+        }
+        return result;
+    }
+
+    /**
+     * Returns last activity timestamps for members based on read pointers.
+     */
+    public static java.util.Map<String, Timestamp> getMemberActivity(int groupId) {
+        ensureSchema();
+        java.util.Map<String, Timestamp> result = new java.util.HashMap<>();
+        String sql = "SELECT username, updated_at FROM " + READ_POINTER_TABLE + " WHERE group_id = ?";
+        try (Connection con = DBUtil.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, groupId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                result.put(rs.getString("username"), rs.getTimestamp("updated_at"));
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Failed to load member activity", e);
         }
         return result;
     }

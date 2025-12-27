@@ -17,9 +17,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
-/**
- * Group chat window with multi-user messaging support.
- */
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class GroupChatFrame extends JFrame {
 
     private JPanel contentPane;
@@ -43,29 +43,41 @@ public class GroupChatFrame extends JFrame {
     private final Map<JLabel, JPanel> reactionStrips = new HashMap<>();
     private final Map<JLabel, Map<String, Integer>> reactionCounts = new HashMap<>();
     private final Map<JLabel, String> messageSenders = new HashMap<>(); // Track who sent each message
+    private final Map<Integer, JLabel> statusLabels = new HashMap<>(); // messageId -> status label
+    private final Map<Integer, String> statusCache = new HashMap<>(); // messageId -> status text
+    private final Map<String, java.sql.Timestamp> memberActivity = new HashMap<>();
+    private javax.swing.Timer activityTimer;
+    private boolean muted = false;
+    private long snoozeUntil = 0L;
+    private static final java.util.Map<Integer, Long> groupSnoozeStore = new java.util.HashMap<>();
 
     // Typing indicator
     private JLabel typingLabel;
     private boolean typingOnSent = false;
     private javax.swing.Timer typingTimer;
     private final Set<String> usersTyping = new HashSet<>();
+    private JButton muteButton;
 
     public GroupChatFrame(int groupId, String groupName, String currentUser, Client client) {
         this.groupId = groupId;
         this.groupName = groupName;
         this.currentUser = currentUser;
+        this.snoozeUntil = groupSnoozeStore.getOrDefault(groupId, 0L);
 
         // Load group creator from database
         loadGroupCreator();
 
         initializeUI();
+        updateMuteState();
         loadGroupHistory();
         loadGroupMembers();
         startMessagePolling(); // Start polling for new messages
+        startActivityPolling(); // Start polling member activity
         setVisible(true);
     }
 
     private void initializeUI() {
+
         setTitle("Group: " + groupName);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setBounds(100, 100, 800, 650);
@@ -87,6 +99,16 @@ public class GroupChatFrame extends JFrame {
         lblGroupName.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblGroupName.setForeground(Color.WHITE);
         topPanel.add(lblGroupName);
+
+        muteButton = new JButton("🔔");
+        muteButton.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        muteButton.setBackground(new Color(64, 68, 75));
+        muteButton.setForeground(Color.WHITE);
+        muteButton.setFocusPainted(false);
+        muteButton.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+        muteButton.addActionListener(e -> showMuteMenu(muteButton));
+        topPanel.add(Box.createHorizontalStrut(8));
+        topPanel.add(muteButton);
         contentPane.add(topPanel, BorderLayout.NORTH);
 
         // Main panel - messages + members
@@ -130,6 +152,7 @@ public class GroupChatFrame extends JFrame {
         membersList.setForeground(Color.WHITE);
         membersList.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         membersList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        membersList.setCellRenderer(new MemberStatusRenderer());
 
         JScrollPane membersScroll = new JScrollPane(membersList);
         membersScroll.setBorder(null);
@@ -254,7 +277,20 @@ public class GroupChatFrame extends JFrame {
                     }
                 }
                 scrollToBottom();
+                refreshOwnMessageStatuses();
             });
+
+            // Mark displayed messages from others as read and advance read pointer
+            new Thread(() -> {
+                for (GroupMessage msg : messages) {
+                    if (!msg.sender().equals(currentUser)) {
+                        GroupDAO.saveMessageStatus(msg.messageId(), currentUser, "read");
+                    }
+                }
+                if (!messages.isEmpty()) {
+                    GroupDAO.setReadPointer(groupId, currentUser, lastMessageId);
+                }
+            }).start();
         }).start();
     }
 
@@ -313,6 +349,13 @@ public class GroupChatFrame extends JFrame {
             }
 
             if (!newMessages.isEmpty()) {
+                List<GroupMessage> mentionHits = new ArrayList<>();
+                for (GroupMessage msg : newMessages) {
+                    if (containsMentionForCurrentUser(msg.content())) {
+                        mentionHits.add(msg);
+                    }
+                }
+
                 SwingUtilities.invokeLater(() -> {
                     for (GroupMessage msg : newMessages) {
                         addMessageBubbleWithTime(
@@ -331,6 +374,22 @@ public class GroupChatFrame extends JFrame {
                     }
                     scrollToBottom();
                 });
+
+                // Notify for mentions only
+                for (GroupMessage msg : mentionHits) {
+                    if (!isMutedNow()) {
+                        showMentionAlert(msg.sender(), msg.content());
+                    }
+                }
+
+                // Mark as read and refresh statuses in background
+                new Thread(() -> {
+                    for (GroupMessage msg : newMessages) {
+                        GroupDAO.saveMessageStatus(msg.messageId(), currentUser, "read");
+                        GroupDAO.setReadPointer(groupId, currentUser, msg.messageId());
+                    }
+                    refreshOwnMessageStatuses();
+                }).start();
             }
         }).start();
     }
@@ -338,11 +397,17 @@ public class GroupChatFrame extends JFrame {
     private void loadGroupMembers() {
         new Thread(() -> {
             List<String> members = GroupDAO.getGroupMembers(groupId);
+            Map<String, java.sql.Timestamp> activity = GroupDAO.getMemberActivity(groupId);
             SwingUtilities.invokeLater(() -> {
                 membersModel.clear();
                 for (String member : members) {
                     membersModel.addElement(member);
                 }
+                memberActivity.clear();
+                if (activity != null) {
+                    memberActivity.putAll(activity);
+                }
+                membersList.repaint();
             });
         }).start();
     }
@@ -369,11 +434,33 @@ public class GroupChatFrame extends JFrame {
                 }
             }
 
-            // Display locally
-            addMessageBubble(currentUser, content, "right", new Color(0, 132, 255), Color.WHITE);
+            // Save to database and get message id
+            int messageId = GroupDAO.saveGroupMessageAndGetId(groupId, currentUser, content);
 
-            // Save to database
-            GroupDAO.saveGroupMessage(groupId, currentUser, content);
+            if (messageId > 0) {
+                // Set initial statuses
+                GroupDAO.saveMessageStatus(messageId, currentUser, "sent");
+                for (String member : members) {
+                    if (!member.equals(currentUser)) {
+                        GroupDAO.saveMessageStatus(messageId, member, "delivered");
+                    }
+                }
+                GroupDAO.setReadPointer(groupId, currentUser, messageId);
+
+                // Display locally with status tracking
+                java.sql.Timestamp nowTs = new java.sql.Timestamp(System.currentTimeMillis());
+                addMessageBubbleWithTime(
+                        messageId,
+                        currentUser,
+                        content,
+                        "right",
+                        new Color(0, 132, 255),
+                        Color.WHITE,
+                        nowTs,
+                        true);
+                statusCache.put(messageId, "sent");
+                updateStatusLabelForMessage(messageId, "sent");
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -401,10 +488,18 @@ public class GroupChatFrame extends JFrame {
         bubbleContainer.setBackground(new Color(54, 57, 63));
         bubbleContainer.setMaximumSize(new Dimension(700, Integer.MAX_VALUE));
 
+        boolean mentionHit = containsMentionForCurrentUser(content);
+
         JPanel bubble = new JPanel();
         bubble.setBackground(bgColor);
         bubble.setLayout(new BoxLayout(bubble, BoxLayout.Y_AXIS));
-        bubble.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+        if (mentionHit) {
+            bubble.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(255, 209, 102), 2),
+                    BorderFactory.createEmptyBorder(10, 14, 10, 14)));
+        } else {
+            bubble.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+        }
 
         // Sender name (only for left-aligned messages)
         if ("left".equals(align)) {
@@ -416,7 +511,7 @@ public class GroupChatFrame extends JFrame {
             bubble.add(Box.createVerticalStrut(4));
         }
 
-        JLabel messageLabel = new JLabel("<html><body style='width: 300px'>" + content + "</body></html>");
+        JLabel messageLabel = new JLabel(buildMessageHtml(content));
         messageLabel.setForeground(textColor);
         messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         messageLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -449,10 +544,18 @@ public class GroupChatFrame extends JFrame {
         bubbleContainer.setBackground(new Color(54, 57, 63));
         bubbleContainer.setMaximumSize(new Dimension(700, Integer.MAX_VALUE));
 
+        boolean mentionHit = containsMentionForCurrentUser(content);
+
         JPanel bubble = new JPanel();
         bubble.setBackground(bgColor);
         bubble.setLayout(new BoxLayout(bubble, BoxLayout.Y_AXIS));
-        bubble.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+        if (mentionHit) {
+            bubble.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(255, 209, 102), 2),
+                    BorderFactory.createEmptyBorder(10, 14, 10, 14)));
+        } else {
+            bubble.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+        }
 
         // Sender name (only for left-aligned messages)
         if ("left".equals(align)) {
@@ -464,7 +567,7 @@ public class GroupChatFrame extends JFrame {
             bubble.add(Box.createVerticalStrut(4));
         }
 
-        JLabel messageLabel = new JLabel("<html><body style='width: 300px'>" + content + "</body></html>");
+        JLabel messageLabel = new JLabel(buildMessageHtml(content));
         messageLabel.setForeground(textColor);
         messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         messageLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -503,11 +606,205 @@ public class GroupChatFrame extends JFrame {
         scrollToBottom();
     }
 
+    private String buildMessageHtml(String raw) {
+        String safe = escapeHtml(raw);
+        safe = safe.replace("\n", "<br>");
+        safe = highlightMentions(safe);
+        return "<html><body style='width: 320px'>" + safe + "</body></html>";
+    }
+
+    private String escapeHtml(String text) {
+        if (text == null)
+            return "";
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    private String highlightMentions(String safeHtml) {
+        Pattern p = Pattern.compile("(^|\\s)@([A-Za-z0-9_.-]+)");
+        Matcher m = p.matcher(safeHtml);
+        StringBuffer sb = new StringBuffer();
+        while (m.find()) {
+            String name = m.group(2);
+            boolean isMe = name.equalsIgnoreCase(currentUser);
+            String style = isMe
+                    ? "background:#FFD166;color:#1B1B1B;padding:1px 4px;border-radius:6px;"
+                    : "background:#2f3136;color:#f5f5f5;padding:1px 4px;border-radius:6px;";
+            String replacement = m.group(1) + "<span style='" + style + "'>@" + name + "</span>";
+            m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
+    private boolean containsMentionForCurrentUser(String text) {
+        if (text == null || currentUser == null)
+            return false;
+        Pattern p = Pattern.compile("(^|\\s)@" + Pattern.quote(currentUser) + "(?=\\b)", Pattern.CASE_INSENSITIVE);
+        return p.matcher(text).find();
+    }
+
+    private void showMentionAlert(String sender, String content) {
+        SwingUtilities.invokeLater(() -> {
+            if (isMutedNow())
+                return;
+            String preview = content;
+            if (preview.length() > 140) {
+                preview = preview.substring(0, 140) + "...";
+            }
+            Toolkit.getDefaultToolkit().beep();
+            JOptionPane.showMessageDialog(this,
+                    sender + " mentioned you:\n" + preview,
+                    "Mention",
+                    JOptionPane.INFORMATION_MESSAGE);
+        });
+    }
+
     private void scrollToBottom() {
         SwingUtilities.invokeLater(() -> {
             JScrollBar vertical = scrollPane.getVerticalScrollBar();
             vertical.setValue(vertical.getMaximum());
         });
+    }
+
+    // ============ MUTE / SNOOZE ============
+
+    private void showMuteMenu(Component invoker) {
+        JPopupMenu menu = new JPopupMenu();
+
+        JMenuItem toggle = new JMenuItem(muted ? "Unmute" : "Mute");
+        toggle.addActionListener(e -> {
+            muted = !muted;
+            if (!muted) {
+                snoozeUntil = 0L;
+                groupSnoozeStore.remove(groupId);
+            }
+            updateMuteState();
+        });
+        menu.add(toggle);
+
+        JMenu snooze = new JMenu("Snooze");
+        addSnoozeItem(snooze, "1 hour", 60);
+        addSnoozeItem(snooze, "8 hours", 8 * 60);
+        addSnoozeItem(snooze, "24 hours", 24 * 60);
+        menu.add(snooze);
+
+        menu.addSeparator();
+        JMenuItem clear = new JMenuItem("Clear snooze");
+        clear.addActionListener(e -> {
+            snoozeUntil = 0L;
+            groupSnoozeStore.remove(groupId);
+            updateMuteState();
+        });
+        menu.add(clear);
+
+        menu.show(invoker, 0, invoker.getHeight());
+    }
+
+    private void addSnoozeItem(JMenu parent, String label, int minutes) {
+        JMenuItem item = new JMenuItem(label);
+        item.addActionListener(e -> {
+            muted = false;
+            snoozeUntil = System.currentTimeMillis() + minutes * 60_000L;
+            groupSnoozeStore.put(groupId, snoozeUntil);
+            updateMuteState();
+        });
+        parent.add(item);
+    }
+
+    private boolean isMutedNow() {
+        long now = System.currentTimeMillis();
+        if (muted)
+            return true;
+        if (snoozeUntil > 0 && now < snoozeUntil)
+            return true;
+        if (snoozeUntil > 0 && now >= snoozeUntil) {
+            snoozeUntil = 0L;
+            groupSnoozeStore.remove(groupId);
+        }
+        return false;
+    }
+
+    private void updateMuteState() {
+        boolean mutedState = isMutedNow();
+        if (muteButton != null) {
+            if (mutedState) {
+                muteButton.setText("🔕");
+                String tip;
+                long remainingMs = snoozeUntil - System.currentTimeMillis();
+                if (!muted && remainingMs > 0) {
+                    long mins = Math.max(1, remainingMs / 60000);
+                    tip = "Snoozed (" + mins + "m remaining)";
+                } else if (muted) {
+                    tip = "Muted";
+                } else {
+                    tip = "Notifications off";
+                }
+                muteButton.setToolTipText(tip);
+            } else {
+                muteButton.setText("🔔");
+                muteButton.setToolTipText("Notifications on");
+            }
+        }
+        this.repaint();
+    }
+
+    // ============ ACTIVITY (ONLINE / LAST SEEN) ============
+
+    private void startActivityPolling() {
+        // Refresh every 30 seconds
+        activityTimer = new javax.swing.Timer(30_000, e -> refreshActivity());
+        activityTimer.start();
+    }
+
+    private void refreshActivity() {
+        new Thread(() -> {
+            Map<String, java.sql.Timestamp> activity = GroupDAO.getMemberActivity(groupId);
+            if (activity == null)
+                return;
+            SwingUtilities.invokeLater(() -> {
+                memberActivity.clear();
+                memberActivity.putAll(activity);
+                membersList.repaint();
+            });
+        }).start();
+    }
+
+    private String formatLastSeen(java.sql.Timestamp ts) {
+        if (ts == null)
+            return "Offline";
+        long diffMs = System.currentTimeMillis() - ts.getTime();
+        long minutes = diffMs / 60000;
+        if (minutes < 2)
+            return "Online";
+        if (minutes < 60)
+            return "Last seen " + minutes + "m ago";
+        long hours = minutes / 60;
+        if (hours < 24)
+            return "Last seen " + hours + "h ago";
+        java.time.LocalDateTime ldt = ts.toLocalDateTime();
+        return String.format("Last seen %02d:%02d", ldt.getHour(), ldt.getMinute());
+    }
+
+    private class MemberStatusRenderer extends DefaultListCellRenderer {
+        @Override
+        public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                boolean isSelected, boolean cellHasFocus) {
+            JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            String user = value == null ? "" : value.toString();
+            java.sql.Timestamp ts = memberActivity.get(user);
+            String statusText = formatLastSeen(ts);
+
+            boolean online = "Online".equals(statusText);
+            String dotColor = online ? "#3BA55D" : "#8A8A8A";
+            label.setText("<html><body><span style='color:" + dotColor + ";'>&#9679;</span> " +
+                    user + "<br><span style='font-size:10px;color:#BBBBBB;'>" + statusText + "</span></body></html>");
+            label.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 4));
+            if (!isSelected) {
+                label.setBackground(new Color(47, 49, 54));
+                label.setForeground(Color.WHITE);
+            }
+            return label;
+        }
     }
 
     // ============ TYPING INDICATOR HELPERS ============
@@ -619,7 +916,7 @@ public class GroupChatFrame extends JFrame {
                     }
 
                     String newDisplay = updated + " (edited)";
-                    messageLabel.setText("<html><body style='width: 300px'>" + newDisplay + "</body></html>");
+                    messageLabel.setText(buildMessageHtml(newDisplay));
 
                     // Update database
                     int msgId = messageLabelIds.getOrDefault(messageLabel, -1);
@@ -770,6 +1067,93 @@ public class GroupChatFrame extends JFrame {
         }
         strip.revalidate();
         strip.repaint();
+    }
+
+    // ============ MESSAGE STATUS (SENT/DELIVERED/READ) ============
+
+    private void updateStatusLabelForMessage(int messageId, String status) {
+        if (messageId <= 0) {
+            return;
+        }
+        statusCache.put(messageId, status);
+        JLabel statusLabel = statusLabels.get(messageId);
+        if (statusLabel == null) {
+            return;
+        }
+
+        String text;
+        Color color = new Color(150, 150, 150);
+        switch (status) {
+            case "read":
+                text = "✓✓";
+                color = new Color(0, 132, 255);
+                break;
+            case "delivered":
+                text = "✓✓";
+                break;
+            case "sent":
+            default:
+                text = "✓";
+                break;
+        }
+        statusLabel.setText(text);
+        statusLabel.setForeground(color);
+        statusLabel.revalidate();
+        statusLabel.repaint();
+    }
+
+    private void refreshOwnMessageStatuses() {
+        new Thread(() -> {
+            try {
+                // Collect own message IDs
+                List<Integer> ownIds = new ArrayList<>();
+                for (Map.Entry<JLabel, Integer> e : messageLabelIds.entrySet()) {
+                    if (currentUser.equals(messageSenders.get(e.getKey()))) {
+                        if (e.getValue() != null && e.getValue() > 0) {
+                            ownIds.add(e.getValue());
+                        }
+                    }
+                }
+                if (ownIds.isEmpty())
+                    return;
+
+                // Load read pointers
+                Map<String, Integer> pointers = GroupDAO.getReadPointers(groupId);
+
+                // Compute status per message based on other members' read pointers
+                List<String> members = new ArrayList<>();
+                for (int i = 0; i < membersModel.size(); i++) {
+                    members.add(membersModel.getElementAt(i));
+                }
+
+                Map<Integer, String> computed = new HashMap<>();
+                for (int msgId : ownIds) {
+                    boolean allRead = true;
+                    for (String m : members) {
+                        if (m.equals(currentUser))
+                            continue;
+                        int ptr = pointers.getOrDefault(m, 0);
+                        if (ptr < msgId) {
+                            allRead = false;
+                            break;
+                        }
+                    }
+                    if (allRead) {
+                        computed.put(msgId, "read");
+                    } else {
+                        computed.put(msgId, "delivered");
+                    }
+                }
+
+                SwingUtilities.invokeLater(() -> {
+                    for (Map.Entry<Integer, String> entry : computed.entrySet()) {
+                        updateStatusLabelForMessage(entry.getKey(), entry.getValue());
+                    }
+                });
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }).start();
     }
 
     private ImageIcon getEmojiImage(String emojiName) {
