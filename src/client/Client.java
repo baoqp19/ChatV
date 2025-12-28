@@ -36,6 +36,7 @@ public class Client {
 
 	// ========================= CONSTRUCTOR =========================
 	public Client(String ip, int portClient, String username, String rawUserList, int portServer) throws Exception {
+
 		this.serverIP = InetAddress.getByName(ip);
 		this.clientPort = portClient;
 		this.username = username;

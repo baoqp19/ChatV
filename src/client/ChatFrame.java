@@ -33,6 +33,12 @@ public class ChatFrame extends JFrame {
     private static final String URL_DIR = System.getProperty("user.dir");
     private static final int EMOJI_BUTTON_WIDTH = 44;
     private static final int EMOJI_BUTTON_HEIGHT = 41;
+    private static final Color CHAT_BACKGROUND = new Color(245, 248, 252);
+    private static final Color BUBBLE_ME = new Color(62, 133, 247);
+    private static final Color BUBBLE_PEER = Color.WHITE;
+    private static final Color BUBBLE_BORDER = new Color(214, 223, 236);
+    private static final Color TEXT_PRIMARY = new Color(33, 37, 43);
+    private static final Color TEXT_MUTED = new Color(122, 134, 150);
 
     // UI Components
     private JPanel contentPane;
@@ -102,13 +108,12 @@ public class ChatFrame extends JFrame {
             String emojiName = msg.substring(7, msg.length() - 1);
             addEmojiMessageBubble(emojiName, "left");
         } else {
-            addMessageBubble(msg, "left", new Color(255, 255, 255), Color.BLACK);
+            addMessageBubble(msg, "left", BUBBLE_PEER, TEXT_PRIMARY);
         }
     }
 
-
     public void updateChat_send(String msg) {
-        addMessageBubble(msg, "right", new Color(0, 132, 255), Color.WHITE);
+        addMessageBubble(msg, "right", BUBBLE_ME, Color.WHITE);
     }
 
     public void updateChat_notify(String msg) {
@@ -121,41 +126,8 @@ public class ChatFrame extends JFrame {
     }
 
     private void addMessageBubble(String msg, String align, Color bgColor, Color textColor) {
-        JPanel bubbleContainer = new JPanel();
-        bubbleContainer.setLayout(new FlowLayout("left".equals(align) ? FlowLayout.LEFT : FlowLayout.RIGHT));
-        bubbleContainer.setBackground(new Color(54, 57, 63));
-        bubbleContainer.setMaximumSize(new Dimension(500, 100));
-
-        JPanel bubble = new JPanel();
-        bubble.setBackground(bgColor);
-        bubble.setLayout(new BoxLayout(bubble, BoxLayout.Y_AXIS));
-        bubble.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
-
         String time = String.format("%02d:%02d", LocalDateTime.now().getHour(), LocalDateTime.now().getMinute());
-
-        JLabel messageLabel = new JLabel(msg);
-        messageLabel.setForeground(textColor);
-        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        messageLabel.setMaximumSize(new Dimension(300, 50));
-        messageLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        bubble.add(messageLabel);
-
-        trackMessageLabel(messageLabel);
-
-        JLabel timeLabel = new JLabel(time);
-        timeLabel.setForeground(new Color(102, 102, 102));
-        timeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        timeLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        bubble.add(Box.createVerticalStrut(6));
-        bubble.add(timeLabel);
-        ensureReactionStrip(bubble, messageLabel);
-
-        attachMessageEditor(bubble, messageLabel, "right".equals(align));
-
-        bubbleContainer.add(bubble);
-        messagesPanel.add(bubbleContainer);
-        messagesPanel.revalidate();
-        messagesPanel.repaint();
+        addStyledBubble(msg, "right".equals(align), bgColor, textColor, time);
     }
 
     /**
@@ -460,16 +432,20 @@ public class ChatFrame extends JFrame {
         JPanel panel = new JPanel();
         panel.setBounds(0, 66, 562, 323);
         panel.setLayout(null);
+        panel.setBackground(CHAT_BACKGROUND);
         contentPane.add(panel);
 
         // Use a JPanel with BoxLayout for message display
         messagesPanel = new JPanel();
         messagesPanel.setLayout(new BoxLayout(messagesPanel, BoxLayout.Y_AXIS));
-        messagesPanel.setBackground(new Color(54, 57, 63));
+        messagesPanel.setBackground(CHAT_BACKGROUND);
+        messagesPanel.setBorder(new EmptyBorder(8, 12, 8, 12));
 
         JScrollPane scrollPane = new JScrollPane(messagesPanel);
         scrollPane.setBounds(0, 0, 562, 300);
-        scrollPane.setBackground(new Color(54, 57, 63));
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.setBackground(CHAT_BACKGROUND);
+        scrollPane.getViewport().setBackground(CHAT_BACKGROUND);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         panel.add(scrollPane);
 
@@ -478,7 +454,7 @@ public class ChatFrame extends JFrame {
 
         // Typing indicator below message list
         typingLabel = new JLabel("");
-        typingLabel.setForeground(new Color(0, 132, 255));
+        typingLabel.setForeground(new Color(62, 133, 247));
         typingLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         typingLabel.setBounds(10, 303, 300, 20);
         typingLabel.setVisible(false);
@@ -707,40 +683,83 @@ public class ChatFrame extends JFrame {
             java.sql.Timestamp ts) {
         java.time.LocalDateTime ldt = ts.toLocalDateTime();
         String time = String.format("%02d:%02d", ldt.getHour(), ldt.getMinute());
+        addStyledBubble(msg, "right".equals(align), bgColor, textColor, time);
+    }
 
-        JPanel bubbleContainer = new JPanel();
-        bubbleContainer.setLayout(new FlowLayout("left".equals(align) ? FlowLayout.LEFT : FlowLayout.RIGHT));
-        bubbleContainer.setBackground(new Color(54, 57, 63));
-        bubbleContainer.setMaximumSize(new Dimension(500, 100));
+    private void addStyledBubble(String msg, boolean fromSender, Color bubbleColor, Color textColor, String time) {
+        JPanel row = buildBubbleRow(msg, fromSender, bubbleColor, textColor, time);
+        messagesPanel.add(row);
+        messagesPanel.revalidate();
+        messagesPanel.repaint();
+    }
 
-        JPanel bubble = new JPanel();
-        bubble.setBackground(bgColor);
+    private JPanel buildBubbleRow(String msg, boolean fromSender, Color bubbleColor, Color textColor, String time) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(false);
+        row.setBackground(CHAT_BACKGROUND);
+        row.setBorder(new EmptyBorder(4, 0, 4, 0));
+
+        JPanel alignPanel = new JPanel(new FlowLayout(fromSender ? FlowLayout.RIGHT : FlowLayout.LEFT, 10, 0));
+        alignPanel.setOpaque(false);
+        row.add(alignPanel, BorderLayout.CENTER);
+
+        RoundedPanel bubble = new RoundedPanel(18, bubbleColor, fromSender ? bubbleColor.darker() : BUBBLE_BORDER);
         bubble.setLayout(new BoxLayout(bubble, BoxLayout.Y_AXIS));
-        bubble.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+        bubble.setBorder(new EmptyBorder(10, 14, 10, 14));
+        bubble.setOpaque(false);
+        bubble.setMaximumSize(new Dimension(420, Integer.MAX_VALUE));
 
         JLabel messageLabel = new JLabel(msg);
         messageLabel.setForeground(textColor);
-        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        messageLabel.setMaximumSize(new Dimension(300, 50));
+        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         messageLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        bubble.add(messageLabel);
-
+        messageLabel.setBorder(new EmptyBorder(0, 0, 0, 0));
+        messageLabel.setMaximumSize(new Dimension(420, Integer.MAX_VALUE));
         trackMessageLabel(messageLabel);
 
-        JLabel timeLabel = new JLabel(time);
-        timeLabel.setForeground(new Color(102, 102, 102));
-        timeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        timeLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        bubble.add(messageLabel);
         bubble.add(Box.createVerticalStrut(6));
-        bubble.add(timeLabel);
+
+        JPanel metaPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        metaPanel.setOpaque(false);
+        JLabel timeLabel = new JLabel(time);
+        timeLabel.setForeground(fromSender ? new Color(220, 232, 252) : TEXT_MUTED);
+        timeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        metaPanel.add(timeLabel);
+        bubble.add(metaPanel);
+
         ensureReactionStrip(bubble, messageLabel);
+        attachMessageEditor(bubble, messageLabel, fromSender);
 
-        attachMessageEditor(bubble, messageLabel, "right".equals(align));
+        alignPanel.add(bubble);
+        return row;
+    }
 
-        bubbleContainer.add(bubble);
-        messagesPanel.add(bubbleContainer);
-        messagesPanel.revalidate();
-        messagesPanel.repaint();
+    private static class RoundedPanel extends JPanel {
+        private final int arc;
+        private final Color fill;
+        private final Color stroke;
+
+        RoundedPanel(int arc, Color fill, Color stroke) {
+            this.arc = arc;
+            this.fill = fill;
+            this.stroke = stroke;
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(fill);
+            g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
+            if (stroke != null) {
+                g2.setColor(stroke);
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
+            }
+            g2.dispose();
+            super.paintComponent(g);
+        }
     }
 
     private ImageIcon getEmojiImage(String emojiName) {
@@ -784,7 +803,7 @@ public class ChatFrame extends JFrame {
 
         JPanel bubbleContainer = new JPanel();
         bubbleContainer.setLayout(new FlowLayout("left".equals(align) ? FlowLayout.LEFT : FlowLayout.RIGHT, 5, 5));
-        bubbleContainer.setBackground(new Color(54, 57, 63));
+        bubbleContainer.setBackground(CHAT_BACKGROUND);
         bubbleContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
 
         JPanel bubble = new JPanel();
@@ -829,7 +848,7 @@ public class ChatFrame extends JFrame {
 
         JPanel bubbleContainer = new JPanel();
         bubbleContainer.setLayout(new FlowLayout("left".equals(align) ? FlowLayout.LEFT : FlowLayout.RIGHT, 5, 5));
-        bubbleContainer.setBackground(new Color(54, 57, 63));
+        bubbleContainer.setBackground(CHAT_BACKGROUND);
         bubbleContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
 
         JPanel bubble = new JPanel();

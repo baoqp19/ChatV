@@ -22,6 +22,13 @@ import java.util.regex.Pattern;
 
 public class GroupChatFrame extends JFrame {
 
+    private static final Color CHAT_BACKGROUND = new Color(245, 248, 252);
+    private static final Color BUBBLE_ME = new Color(62, 133, 247);
+    private static final Color BUBBLE_PEER = Color.WHITE;
+    private static final Color BUBBLE_BORDER = new Color(214, 223, 236);
+    private static final Color TEXT_PRIMARY = new Color(33, 37, 43);
+    private static final Color TEXT_MUTED = new Color(122, 134, 150);
+
     private JPanel contentPane;
     private JPanel messagesPanel;
     private JTextArea txtMessage;
@@ -84,26 +91,27 @@ public class GroupChatFrame extends JFrame {
         setLocationRelativeTo(null);
 
         contentPane = new JPanel();
-        contentPane.setBackground(new Color(54, 57, 63));
+        contentPane.setBackground(CHAT_BACKGROUND);
         contentPane.setBorder(new EmptyBorder(10, 10, 10, 10));
         contentPane.setLayout(new BorderLayout(10, 10));
         setContentPane(contentPane);
 
         // Top panel - group name
         JPanel topPanel = new JPanel();
-        topPanel.setBackground(new Color(47, 49, 54));
+        topPanel.setBackground(Color.WHITE);
         topPanel.setPreferredSize(new Dimension(800, 50));
         topPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+        topPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BUBBLE_BORDER));
 
         lblGroupName = new JLabel("🗨️ " + groupName);
         lblGroupName.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblGroupName.setForeground(Color.WHITE);
+        lblGroupName.setForeground(TEXT_PRIMARY);
         topPanel.add(lblGroupName);
 
         muteButton = new JButton("🔔");
         muteButton.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        muteButton.setBackground(new Color(64, 68, 75));
-        muteButton.setForeground(Color.WHITE);
+        muteButton.setBackground(new Color(243, 246, 250));
+        muteButton.setForeground(TEXT_PRIMARY);
         muteButton.setFocusPainted(false);
         muteButton.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
         muteButton.addActionListener(e -> showMuteMenu(muteButton));
@@ -113,24 +121,26 @@ public class GroupChatFrame extends JFrame {
 
         // Main panel - messages + members
         JPanel mainPanel = new JPanel(new BorderLayout(10, 0));
-        mainPanel.setBackground(new Color(54, 57, 63));
+        mainPanel.setBackground(CHAT_BACKGROUND);
 
         // Messages panel
         messagesPanel = new JPanel();
-        messagesPanel.setBackground(new Color(54, 57, 63));
+        messagesPanel.setBackground(CHAT_BACKGROUND);
+        messagesPanel.setBorder(new EmptyBorder(8, 12, 8, 12));
         messagesPanel.setLayout(new BoxLayout(messagesPanel, BoxLayout.Y_AXIS));
 
         scrollPane = new JScrollPane(messagesPanel);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
-        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(32, 34, 37), 2));
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getViewport().setBackground(CHAT_BACKGROUND);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         mainPanel.add(scrollPane, BorderLayout.CENTER);
 
         // Typing indicator label
         typingLabel = new JLabel("");
-        typingLabel.setForeground(new Color(0, 132, 255));
-        typingLabel.setFont(new Font("Segoe UI", Font.ITALIC, 12));
-        typingLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        typingLabel.setForeground(new Color(62, 133, 247));
+        typingLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        typingLabel.setBorder(BorderFactory.createEmptyBorder(5, 12, 5, 12));
         typingLabel.setVisible(false);
         mainPanel.add(typingLabel, BorderLayout.SOUTH);
 
@@ -209,19 +219,19 @@ public class GroupChatFrame extends JFrame {
 
         // Bottom panel - input
         JPanel inputPanel = new JPanel(new BorderLayout(10, 0));
-        inputPanel.setBackground(new Color(54, 57, 63));
+        inputPanel.setBackground(CHAT_BACKGROUND);
         inputPanel.setPreferredSize(new Dimension(800, 80));
 
         txtMessage = new JTextArea(3, 30);
         txtMessage.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         txtMessage.setLineWrap(true);
         txtMessage.setWrapStyleWord(true);
-        txtMessage.setBackground(new Color(64, 68, 75));
-        txtMessage.setForeground(Color.WHITE);
-        txtMessage.setCaretColor(Color.WHITE);
+        txtMessage.setBackground(Color.WHITE);
+        txtMessage.setForeground(TEXT_PRIMARY);
+        txtMessage.setCaretColor(TEXT_PRIMARY);
         txtMessage.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(32, 34, 37), 2),
-                BorderFactory.createEmptyBorder(8, 8, 8, 8)));
+            BorderFactory.createLineBorder(BUBBLE_BORDER, 1),
+            BorderFactory.createEmptyBorder(8, 8, 8, 8)));
 
         JScrollPane txtScroll = new JScrollPane(txtMessage);
         txtScroll.setBorder(null);
@@ -229,7 +239,7 @@ public class GroupChatFrame extends JFrame {
 
         JButton btnSend = new JButton("Send");
         btnSend.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnSend.setBackground(new Color(88, 101, 242));
+        btnSend.setBackground(new Color(62, 133, 247));
         btnSend.setForeground(Color.WHITE);
         btnSend.setFocusPainted(false);
         btnSend.setPreferredSize(new Dimension(100, 80));
@@ -482,85 +492,39 @@ public class GroupChatFrame extends JFrame {
     private void addMessageBubble(String sender, String content, String align, Color bgColor, Color textColor) {
         LocalDateTime now = LocalDateTime.now();
         String time = String.format("%02d:%02d", now.getHour(), now.getMinute());
-
-        JPanel bubbleContainer = new JPanel();
-        bubbleContainer.setLayout(new FlowLayout("left".equals(align) ? FlowLayout.LEFT : FlowLayout.RIGHT));
-        bubbleContainer.setBackground(new Color(54, 57, 63));
-        bubbleContainer.setMaximumSize(new Dimension(700, Integer.MAX_VALUE));
-
-        boolean mentionHit = containsMentionForCurrentUser(content);
-
-        JPanel bubble = new JPanel();
-        bubble.setBackground(bgColor);
-        bubble.setLayout(new BoxLayout(bubble, BoxLayout.Y_AXIS));
-        if (mentionHit) {
-            bubble.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(new Color(255, 209, 102), 2),
-                    BorderFactory.createEmptyBorder(10, 14, 10, 14)));
-        } else {
-            bubble.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
-        }
-
-        // Sender name (only for left-aligned messages)
-        if ("left".equals(align)) {
-            JLabel senderLabel = new JLabel(sender);
-            senderLabel.setForeground(new Color(0, 132, 255));
-            senderLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
-            senderLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-            bubble.add(senderLabel);
-            bubble.add(Box.createVerticalStrut(4));
-        }
-
-        JLabel messageLabel = new JLabel(buildMessageHtml(content));
-        messageLabel.setForeground(textColor);
-        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        messageLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        trackMessageLabel(messageLabel, -1, sender);
-        bubble.add(messageLabel);
-
-        JLabel timeLabel = new JLabel(time);
-        timeLabel.setForeground(new Color(102, 102, 102));
-        timeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        timeLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        bubble.add(Box.createVerticalStrut(6));
-        bubble.add(timeLabel);
-
-        ensureReactionStrip(bubble, messageLabel);
-        attachMessageEditor(bubble, messageLabel, "right".equals(align), sender);
-
-        bubbleContainer.add(bubble);
-        messagesPanel.add(bubbleContainer);
-        messagesPanel.revalidate();
-        messagesPanel.repaint();
+        boolean fromSender = "right".equals(align);
+        addStyledBubble(-1, sender, content, fromSender, time, containsMentionForCurrentUser(content));
     }
 
     private void addMessageBubbleWithTime(int messageId, String sender, String content, String align,
             Color bgColor, Color textColor, java.sql.Timestamp ts, boolean isSender) {
         java.time.LocalDateTime ldt = ts.toLocalDateTime();
         String time = String.format("%02d:%02d", ldt.getHour(), ldt.getMinute());
+        addStyledBubble(messageId, sender, content, isSender, time, containsMentionForCurrentUser(content));
+    }
 
-        JPanel bubbleContainer = new JPanel();
-        bubbleContainer.setLayout(new FlowLayout("left".equals(align) ? FlowLayout.LEFT : FlowLayout.RIGHT));
-        bubbleContainer.setBackground(new Color(54, 57, 63));
-        bubbleContainer.setMaximumSize(new Dimension(700, Integer.MAX_VALUE));
+    private void addStyledBubble(int messageId, String sender, String content, boolean fromSender, String time,
+            boolean mentionHit) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(false);
+        row.setBackground(CHAT_BACKGROUND);
+        row.setBorder(new EmptyBorder(4, 0, 4, 0));
 
-        boolean mentionHit = containsMentionForCurrentUser(content);
+        JPanel alignPanel = new JPanel(new FlowLayout(fromSender ? FlowLayout.RIGHT : FlowLayout.LEFT, 10, 0));
+        alignPanel.setOpaque(false);
+        row.add(alignPanel, BorderLayout.CENTER);
 
-        JPanel bubble = new JPanel();
-        bubble.setBackground(bgColor);
+        Color fill = fromSender ? BUBBLE_ME : BUBBLE_PEER;
+        Color stroke = mentionHit ? new Color(255, 209, 102) : (fromSender ? fill.darker() : BUBBLE_BORDER);
+        RoundedPanel bubble = new RoundedPanel(18, fill, stroke);
         bubble.setLayout(new BoxLayout(bubble, BoxLayout.Y_AXIS));
-        if (mentionHit) {
-            bubble.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(new Color(255, 209, 102), 2),
-                    BorderFactory.createEmptyBorder(10, 14, 10, 14)));
-        } else {
-            bubble.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
-        }
+        bubble.setBorder(new EmptyBorder(10, 14, 10, 14));
+        bubble.setOpaque(false);
+        bubble.setMaximumSize(new Dimension(520, Integer.MAX_VALUE));
 
-        // Sender name (only for left-aligned messages)
-        if ("left".equals(align)) {
+        if (!fromSender) {
             JLabel senderLabel = new JLabel(sender);
-            senderLabel.setForeground(new Color(0, 132, 255));
+            senderLabel.setForeground(new Color(62, 133, 247));
             senderLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
             senderLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
             bubble.add(senderLabel);
@@ -568,35 +532,47 @@ public class GroupChatFrame extends JFrame {
         }
 
         JLabel messageLabel = new JLabel(buildMessageHtml(content));
-        messageLabel.setForeground(textColor);
-        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        messageLabel.setForeground(fromSender ? Color.WHITE : TEXT_PRIMARY);
+        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         messageLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        messageLabel.setMaximumSize(new Dimension(520, Integer.MAX_VALUE));
         trackMessageLabel(messageLabel, messageId, sender);
         bubble.add(messageLabel);
 
+        JPanel meta = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        meta.setOpaque(false);
         JLabel timeLabel = new JLabel(time);
-        timeLabel.setForeground(new Color(102, 102, 102));
+        timeLabel.setForeground(fromSender ? new Color(220, 232, 252) : TEXT_MUTED);
         timeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        timeLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        meta.add(timeLabel);
+
+        if (messageId > 0) {
+            JLabel status = new JLabel("");
+            status.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+            status.setForeground(TEXT_MUTED);
+            statusLabels.put(messageId, status);
+            meta.add(status);
+        }
+
         bubble.add(Box.createVerticalStrut(6));
-        bubble.add(timeLabel);
+        bubble.add(meta);
 
         ensureReactionStrip(bubble, messageLabel);
-        attachMessageEditor(bubble, messageLabel, isSender, sender);
+        attachMessageEditor(bubble, messageLabel, fromSender, sender);
 
-        bubbleContainer.add(bubble);
-        messagesPanel.add(bubbleContainer);
+        alignPanel.add(bubble);
+        messagesPanel.add(row);
         messagesPanel.revalidate();
         messagesPanel.repaint();
     }
 
     private void addSystemMessage(String message) {
         JPanel container = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        container.setBackground(new Color(54, 57, 63));
+        container.setBackground(CHAT_BACKGROUND);
         container.setMaximumSize(new Dimension(700, 40));
 
         JLabel label = new JLabel("• " + message);
-        label.setForeground(new Color(150, 150, 150));
+        label.setForeground(TEXT_MUTED);
         label.setFont(new Font("Segoe UI", Font.ITALIC, 12));
         container.add(label);
 
@@ -783,6 +759,33 @@ public class GroupChatFrame extends JFrame {
             return "Last seen " + hours + "h ago";
         java.time.LocalDateTime ldt = ts.toLocalDateTime();
         return String.format("Last seen %02d:%02d", ldt.getHour(), ldt.getMinute());
+    }
+
+    private static class RoundedPanel extends JPanel {
+        private final int arc;
+        private final Color fill;
+        private final Color stroke;
+
+        RoundedPanel(int arc, Color fill, Color stroke) {
+            this.arc = arc;
+            this.fill = fill;
+            this.stroke = stroke;
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(fill);
+            g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
+            if (stroke != null) {
+                g2.setColor(stroke);
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
+            }
+            g2.dispose();
+            super.paintComponent(g);
+        }
     }
 
     private class MemberStatusRenderer extends DefaultListCellRenderer {

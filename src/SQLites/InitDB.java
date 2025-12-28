@@ -45,12 +45,10 @@ public final class InitDB {
         }
     }
 
-    /**
-     * Main method for command-line initialization
-     * 
-     * @param args Command-line arguments (unused)
-     */
+
     public static void main(String[] args) {
         initialize();
     }
+    
+
 }
