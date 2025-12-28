@@ -22,10 +22,10 @@ import java.util.regex.Pattern;
 
 public class GroupChatFrame extends JFrame {
 
-    private static final Color CHAT_BACKGROUND = new Color(245, 248, 252);
+    private static final Color CHAT_BACKGROUND = new Color(228, 231, 237);
     private static final Color BUBBLE_ME = new Color(62, 133, 247);
     private static final Color BUBBLE_PEER = Color.WHITE;
-    private static final Color BUBBLE_BORDER = new Color(214, 223, 236);
+    private static final Color BUBBLE_BORDER = new Color(200, 210, 225);
     private static final Color TEXT_PRIMARY = new Color(33, 37, 43);
     private static final Color TEXT_MUTED = new Color(122, 134, 150);
 
@@ -230,8 +230,8 @@ public class GroupChatFrame extends JFrame {
         txtMessage.setForeground(TEXT_PRIMARY);
         txtMessage.setCaretColor(TEXT_PRIMARY);
         txtMessage.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(BUBBLE_BORDER, 1),
-            BorderFactory.createEmptyBorder(8, 8, 8, 8)));
+                BorderFactory.createLineBorder(BUBBLE_BORDER, 1),
+                BorderFactory.createEmptyBorder(8, 8, 8, 8)));
 
         JScrollPane txtScroll = new JScrollPane(txtMessage);
         txtScroll.setBorder(null);

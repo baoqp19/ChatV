@@ -33,10 +33,10 @@ public class ChatFrame extends JFrame {
     private static final String URL_DIR = System.getProperty("user.dir");
     private static final int EMOJI_BUTTON_WIDTH = 44;
     private static final int EMOJI_BUTTON_HEIGHT = 41;
-    private static final Color CHAT_BACKGROUND = new Color(245, 248, 252);
+    private static final Color CHAT_BACKGROUND = new Color(228, 231, 237);
     private static final Color BUBBLE_ME = new Color(62, 133, 247);
     private static final Color BUBBLE_PEER = Color.WHITE;
-    private static final Color BUBBLE_BORDER = new Color(214, 223, 236);
+    private static final Color BUBBLE_BORDER = new Color(200, 210, 225);
     private static final Color TEXT_PRIMARY = new Color(33, 37, 43);
     private static final Color TEXT_MUTED = new Color(122, 134, 150);
 
@@ -68,6 +68,7 @@ public class ChatFrame extends JFrame {
     private JLabel localVideoLabel;
     private JLabel remoteVideoLabel;
     private JLabel typingLabel;
+    private volatile boolean uiReady = false; // Flag to ensure UI is initialized before processing messages
 
     public ChatFrame(String user, String guest, Socket socket, int port) throws Exception {
         this(user, guest, socket, port, port);
@@ -81,12 +82,13 @@ public class ChatFrame extends JFrame {
         this.portVoice = portVoice;
 
         this.chat = new ChatRoom(socketChat, nameUser, nameGuest);
-        this.chat.start();
 
         EventQueue.invokeLater(() -> {
             initializeUI();
             loadHistory();
             this.setVisible(true);
+            uiReady = true; // Signal that UI is ready
+            chat.start(); // Start ChatRoom after UI is initialized
         });
     }
 
@@ -103,6 +105,11 @@ public class ChatFrame extends JFrame {
     // ============ MESSAGE DISPLAY METHODS ============
 
     public void updateChat_receive(String msg) {
+        // Wait for UI to be ready
+        if (!uiReady) {
+            SwingUtilities.invokeLater(() -> updateChat_receive(msg));
+            return;
+        }
         // Check if message is emoji
         if (msg.startsWith("[emoji:") && msg.endsWith("]")) {
             String emojiName = msg.substring(7, msg.length() - 1);
