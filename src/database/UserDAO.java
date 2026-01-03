@@ -117,4 +117,31 @@ public final class UserDAO {
         }
         return users;
     }
+
+    /**
+     * Verifies user password
+     * 
+     * @param username Username
+     * @param password Password to verify
+     * @return true if password is correct, false otherwise
+     */
+    public static boolean verifyPassword(String username, String password) {
+        String sql = "SELECT password FROM users WHERE username = ? LIMIT 1";
+        try (Connection con = DBUtil.getConnection();
+                PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, username);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String storedPassword = rs.getString("password");
+                    // Simple string comparison (consider using bcrypt in production)
+                    return storedPassword != null && storedPassword.equals(password);
+                }
+            }
+
+        } catch (SQLException e) {
+            LOGGER.log(Level.WARNING, "Error verifying password for user: " + username, e);
+        }
+        return false;
+    }
 }

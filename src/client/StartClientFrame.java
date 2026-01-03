@@ -21,20 +21,25 @@ public class StartClientFrame extends JFrame implements ActionListener {
 	private static final String SERVER_NOT_START = "Không thể kết nối tới Server!\nVui lòng kiểm tra lại IP/Port hoặc bật Server.";
 
 	private Pattern checkName = Pattern.compile("^[_a-zA-Z][_a-zA-Z0-9]{0,19}$"); // Tối đa 20 ký tự
-	private JTextField txtIP, txtPort, txtUserName;
+	private JTextField txtUserName;
+	private JPasswordField txtPassword;
 	private JButton btnConnectServer;
 
+	// Default server config
+	private static final String DEFAULT_IP = "127.0.0.1";
+	private static final int DEFAULT_PORT = 3939;
+
 	String IP, port, userName;
-	String file = System.getProperty("user.dir") + "\\Server.txt";
-	List<String> listServer = new ArrayList<>();
 
 	public static void main(String[] args) {
 		EventQueue.invokeLater(() -> {
 			try {
 				UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
 			} catch (Exception e) {
-				try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); }
-				catch (Exception ignored) {}
+				try {
+					UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+				} catch (Exception ignored) {
+				}
 			}
 			new StartClientFrame().setVisible(true);
 		});
@@ -42,12 +47,12 @@ public class StartClientFrame extends JFrame implements ActionListener {
 
 	public StartClientFrame() {
 		initComponents();
-		autoDetectLocalIP();
 	}
+
 	private void initComponents() {
-		setTitle("VKU Chat Client - Kết nối Server");
+		setTitle("VKU Chat Client - Đăng nhập");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setSize(720, 620); // Tăng chiều cao một chút để thoáng hơn
+		setSize(720, 620);
 		setLocationRelativeTo(null);
 		setResizable(false);
 
@@ -78,18 +83,11 @@ public class StartClientFrame extends JFrame implements ActionListener {
 		// === FORM CARD ===
 		JPanel cardPanel = new JPanel(new GridBagLayout());
 		cardPanel.setBackground(Color.WHITE);
-		cardPanel.setPreferredSize(new Dimension(520, 360));
-		cardPanel.setMaximumSize(new Dimension(520, 360));
-		// Bo góc + bóng nhẹ (modern card style)
+		cardPanel.setPreferredSize(new Dimension(520, 280));
+		cardPanel.setMaximumSize(new Dimension(520, 280));
 		cardPanel.setBorder(BorderFactory.createCompoundBorder(
-				BorderFactory.createLineBorder(new Color(200, 220, 255), 1),
-				BorderFactory.createEmptyBorder(40, 50, 40, 50)
-		));
-		// Thêm hiệu ứng bóng (tùy chọn, dùng Rounded border + shadow)
-		cardPanel.setBorder(BorderFactory.createCompoundBorder(
-				new RoundedBorder(new Color(180, 210, 255), 2, 20), // bo góc 20px
-				new EmptyBorder(40, 50, 40, 50)
-		));
+				new RoundedBorder(new Color(180, 210, 255), 2, 20),
+				new EmptyBorder(40, 50, 40, 50)));
 
 		GridBagConstraints gbc = new GridBagConstraints();
 		gbc.gridwidth = GridBagConstraints.REMAINDER;
@@ -97,14 +95,11 @@ public class StartClientFrame extends JFrame implements ActionListener {
 		gbc.insets = new Insets(12, 0, 12, 0);
 		gbc.weightx = 1.0;
 
-		// Server IP
-		addLabeledField(cardPanel, gbc, "Server IP:", txtIP = createStyledTextField("127.0.0.1"));
-
-		// Server Port
-		addLabeledField(cardPanel, gbc, "Server Port:", txtPort = createStyledTextField("3939"));
-
 		// Username
-		addLabeledField(cardPanel, gbc, "Tên của bạn:", txtUserName = createStyledTextField(""));
+		addLabeledField(cardPanel, gbc, "Tên đăng nhập:", txtUserName = createStyledTextField(""));
+
+		// Password
+		addLabeledField(cardPanel, gbc, "Mật khẩu:", txtPassword = createStyledPasswordField());
 
 		mainPanel.add(cardPanel, BorderLayout.CENTER);
 
@@ -133,6 +128,7 @@ public class StartClientFrame extends JFrame implements ActionListener {
 			public void mouseEntered(MouseEvent e) {
 				btnConnectServer.setBackground(new Color(0, 105, 220));
 			}
+
 			@Override
 			public void mouseExited(MouseEvent e) {
 				btnConnectServer.setBackground(new Color(0, 122, 255));
@@ -153,6 +149,7 @@ public class StartClientFrame extends JFrame implements ActionListener {
 			public void mouseEntered(MouseEvent e) {
 				btnRegister.setBackground(new Color(230, 230, 230));
 			}
+
 			@Override
 			public void mouseExited(MouseEvent e) {
 				btnRegister.setBackground(new Color(245, 245, 245));
@@ -172,10 +169,9 @@ public class StartClientFrame extends JFrame implements ActionListener {
 		// Hint
 		JLabel lblHint = new JLabel(
 				"<html><div style='text-align: center; color: #888888; font-style: italic;'>"
-						+ "Mặc định: 127.0.0.1 - Port 3939<br>"
+						+ "Nhập tên đăng nhập và mật khẩu của bạn<br>"
 						+ "Đảm bảo Server đang chạy trước khi kết nối"
-						+ "</div></html>"
-		);
+						+ "</div></html>");
 		lblHint.setFont(new Font("Segoe UI", Font.ITALIC, 13));
 		lblHint.setHorizontalAlignment(SwingConstants.CENTER);
 		lblHint.setBorder(new EmptyBorder(25, 0, 0, 0));
@@ -200,6 +196,17 @@ public class StartClientFrame extends JFrame implements ActionListener {
 		panel.add(row, gbc);
 	}
 
+	// Helper để tạo password field đẹp
+	private JPasswordField createStyledPasswordField() {
+		JPasswordField field = new JPasswordField();
+		field.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+		field.setPreferredSize(new Dimension(300, 48));
+		field.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createLineBorder(new Color(180, 200, 230), 1),
+				BorderFactory.createEmptyBorder(0, 15, 0, 15)));
+		return field;
+	}
+
 	// Helper để tạo textfield đẹp (bạn có thể tùy chỉnh thêm)
 	private JTextField createStyledTextField(String text) {
 		JTextField field = new JTextField(text);
@@ -207,11 +214,9 @@ public class StartClientFrame extends JFrame implements ActionListener {
 		field.setPreferredSize(new Dimension(300, 48));
 		field.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createLineBorder(new Color(180, 200, 230), 1),
-				BorderFactory.createEmptyBorder(0, 15, 0, 15)
-		));
+				BorderFactory.createEmptyBorder(0, 15, 0, 15)));
 		return field;
 	}
-
 
 	// Custom Rounded Border class (thêm vào class của bạn)
 	static class RoundedBorder implements Border {
@@ -238,7 +243,7 @@ public class StartClientFrame extends JFrame implements ActionListener {
 			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 			g2.setColor(color);
 			g2.setStroke(new BasicStroke(thickness));
-			g2.drawRoundRect(x + thickness/2, y + thickness/2,
+			g2.drawRoundRect(x + thickness / 2, y + thickness / 2,
 					width - thickness, height - thickness, radii, radii);
 			g2.dispose();
 		}
@@ -257,13 +262,13 @@ public class StartClientFrame extends JFrame implements ActionListener {
 						for (InetAddress inetAddress : Collections.list(inetAddresses)) {
 							if (inetAddress instanceof Inet4Address && !inetAddress.isLoopbackAddress()) {
 								final String ip = inetAddress.getHostAddress();
-								SwingUtilities.invokeLater(() -> txtIP.setText(ip));
+								SwingUtilities.invokeLater(() -> txtUserName.setText(ip));
 								return null;
 							}
 						}
 					}
 				}
-				SwingUtilities.invokeLater(() -> txtIP.setText("127.0.0.1"));
+				SwingUtilities.invokeLater(() -> txtUserName.setText("127.0.0.1"));
 				return null;
 			}
 		};
@@ -275,64 +280,76 @@ public class StartClientFrame extends JFrame implements ActionListener {
 
 		if (e.getSource() == btnConnectServer) {
 			userName = txtUserName.getText().trim();
-			IP = txtIP.getText().trim();
-			port = txtPort.getText().trim();
+			String password = new String(txtPassword.getPassword()).trim();
+			IP = DEFAULT_IP;
+			port = String.valueOf(DEFAULT_PORT);
 
 			if (userName.isEmpty()) {
-				JOptionPane.showMessageDialog(this, "Vui lòng nhập tên!", "Lỗi", JOptionPane.WARNING_MESSAGE);
+				JOptionPane.showMessageDialog(this, "Vui lòng nhập tên đăng nhập!", "Lỗi", JOptionPane.WARNING_MESSAGE);
 				return;
 			}
 			if (!checkName.matcher(userName).matches()) {
 				JOptionPane.showMessageDialog(this, NAME_FAILED, "Tên không hợp lệ", JOptionPane.ERROR_MESSAGE);
 				return;
 			}
-			if (IP.isEmpty()) {
-				JOptionPane.showMessageDialog(this, "IP Server không được để trống!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+			if (password.isEmpty()) {
+				JOptionPane.showMessageDialog(this, "Vui lòng nhập mật khẩu!", "Lỗi", JOptionPane.WARNING_MESSAGE);
 				return;
 			}
 
+			// Kiểm tra xem user có tồn tại không
 			if (!UserDAO.isUserExist(userName)) {
 				JOptionPane.showMessageDialog(
 						this,
 						"Tên đăng nhập không tồn tại. Vui lòng đăng ký!",
 						"Đăng nhập thất bại",
-						JOptionPane.ERROR_MESSAGE
-				);
+						JOptionPane.ERROR_MESSAGE);
 				return;
 			}
 
-				try {
-					Random rd = new Random();
-					int portPeer = 10000 + rd.nextInt(1000);
-					int portServer = Integer.parseInt(txtPort.getText().trim());
+			// Kiểm tra mật khẩu
+			if (!UserDAO.verifyPassword(userName, password)) {
+				JOptionPane.showMessageDialog(
+						this,
+						"Mật khẩu không chính xác!",
+						"Đăng nhập thất bại",
+						JOptionPane.ERROR_MESSAGE);
+				return;
+			}
 
-					Socket socketClient = new Socket(IP, portServer);
-					socketClient.setSoTimeout(5000); // timeout 5s
+			try {
+				Random rd = new Random();
+				int portPeer = 10000 + rd.nextInt(1000);
+				int portServer = DEFAULT_PORT;
 
-					String msg = Encode.getCreateAccount(userName, String.valueOf(portPeer));
-					ObjectOutputStream oos = new ObjectOutputStream(socketClient.getOutputStream());
-					oos.writeObject(msg);
-					oos.flush();
+				Socket socketClient = new Socket(IP, portServer);
+				socketClient.setSoTimeout(5000); // timeout 5s
 
-					ObjectInputStream ois = new ObjectInputStream(socketClient.getInputStream());
-					msg = (String) ois.readObject();
+				String msg = Encode.getCreateAccount(userName, String.valueOf(portPeer));
+				ObjectOutputStream oos = new ObjectOutputStream(socketClient.getOutputStream());
+				oos.writeObject(msg);
+				oos.flush();
 
-					socketClient.close();
+				ObjectInputStream ois = new ObjectInputStream(socketClient.getInputStream());
+				msg = (String) ois.readObject();
 
-					if (msg.equals(Tags.SESSION_DENY_TAG)) {
-						JOptionPane.showMessageDialog(this, NAME_EXIST, "Đăng nhập thất bại", JOptionPane.ERROR_MESSAGE);
-						return;
-					}
-					// Thành công → mở MainFrame
-					new MainFrame(IP, portPeer, userName, msg, portServer);
-					dispose();
+				socketClient.close();
 
-				} catch (ConnectException | SocketTimeoutException ex) {
-					JOptionPane.showMessageDialog(this, SERVER_NOT_START, "Không kết nối được", JOptionPane.ERROR_MESSAGE);
-				} catch (Exception ex) {
-					JOptionPane.showMessageDialog(this, "Lỗi không xác định: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
-					ex.printStackTrace();
+				if (msg.equals(Tags.SESSION_DENY_TAG)) {
+					JOptionPane.showMessageDialog(this, NAME_EXIST, "Đăng nhập thất bại", JOptionPane.ERROR_MESSAGE);
+					return;
 				}
+				// Thành công → mở MainFrame
+				new MainFrame(IP, portPeer, userName, msg, portServer);
+				dispose();
+
+			} catch (ConnectException | SocketTimeoutException ex) {
+				JOptionPane.showMessageDialog(this, SERVER_NOT_START, "Không kết nối được", JOptionPane.ERROR_MESSAGE);
+			} catch (Exception ex) {
+				JOptionPane.showMessageDialog(this, "Lỗi không xác định: " + ex.getMessage(), "Lỗi",
+						JOptionPane.ERROR_MESSAGE);
+				ex.printStackTrace();
+			}
 		}
 	}
 }
